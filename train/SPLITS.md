@@ -73,3 +73,54 @@ Nothing Japanese has been used for training or tuning, and no Japanese audio has
 - For reference, English on the same three emotions (NEU, HAP, ANG): fresh speakers 74 %, 69 %, 81 %, 67 %; held-out
   set 1: 55 %, 52 %, 65 %, 51 % (single line, one emotion, long, live).
 - Limits known in advance: three speakers, all female, read sentences, three of the six emotions.
+
+## Result of the check on Japanese speech (2026-11-14)
+
+Measured once, as fixed above, with the networks and the app code of commit 062641a. Raw output:
+`results/eval_short_it5_japanese.txt`, `results/eval_live_it5_japanese.txt`.
+
+| Mark | Japanese, 900 lines | Met |
+|---|---|---|
+| single line, at least 55 % | 12.2 % | no |
+| 25 lines in one emotion, at least 55 % | 11.6 % | no |
+| long recording (75 lines), at least 64 % | 15.6 % | no |
+| live, played at the end of the line, at least 55 % | 17.3 % | no |
+
+Chance is 16.7 %. Of the 300 "normal" lines and the 300 happy lines, fewer than 1 % are read correctly in every studio
+condition (live: 1 and 24 of 300). The networks answer anger or fear for almost every line (live: anger 443 and fear
+295 of 900). The reading does not work on this material.
+
+## What the checks on CREMA-D could not show (diagnosis, 2026-11-14)
+
+Every reading number above the Japanese check comes from CREMA-D speakers saying the 12 CREMA-D sentences in the
+CREMA-D rooms. Two experiments after the Japanese result, both on the validation speakers (571 lines):
+
+- **Wording** (`sent_holdout.py`, `results/sent_holdout_it5.txt`). Networks trained without three of the twelve
+  sentences read those sentences 12 to 17 points worse than a network that knows them: a single line 49.0 % instead
+  of 66.2 %, a long recording 54.5 % instead of 66.4 % (standard error 2.4 points). Training on 9 instead of 12
+  sentences costs nothing by itself (64.3 % and 68.5 % on sentences that were seen). Neutral and happy lines lose
+  most (single line: 0.80 to 0.43 and 0.70 to 0.39). So the targets of iteration 5 were met for the twelve known
+  sentences; for other words the same method reads roughly 50 to 55 % in this corpus.
+- **Room noise** (`floor_check.py`, `results/floor_check_it5.txt`). CREMA-D has room noise only about 20 dB below
+  the speech level, less when the actor speaks quietly. With the frames between the words lowered by 45 dB (a studio,
+  a noise gate, noise suppression) the reading of a single line falls from 68.8 % to 36.6 % and of a long recording
+  from 73.6 % to 53.4 %; neutral and sad lines are then read as anger or happiness (single line: NEU 0.06, SAD
+  0.00). The networks use the distance between the voice and the room noise as a sign of how loudly somebody speaks.
+  The live mode of the app asks the browser for noise suppression (`app/rt/live.js`), so live use on a device may be
+  affected; that has not been measured on a device.
+
+Exploratory, with scripts that are not kept here because they need the Japanese audio: putting CREMA-D room noise
+into the Japanese lines (frame by frame) does not repair their reading. A reader without any sequence patterns
+(logistic regression on 49 summary values of a line) answers anger for 98 % of the Japanese lines when it knows only
+that line, and gets 42 % (six classes) when the values are taken relative to the whole session, where the networks
+get 16 %. Japanese lines differ from CREMA-D lines by one and a half to three standard deviations in length, share of
+voiced frames, length of voiced stretches and size of the energy steps.
+
+Conclusion: one corpus with twelve sentences from one kind of room is too narrow a base for a reading that should
+work on any line in any major language. The next iteration needs training material with many sentences, recording
+conditions and languages, and its checks need corpora that were not used for training.
+
+Speakers looked at during this diagnosis, besides the validation speakers: lines of 1008, 1016, 1024, 1032, 1040
+(fresh set) and 1083 to 1087 (held-out set 1) were read in the exploratory scripts. Nothing was tuned on them, but
+they are no longer untouched. The Japanese corpus has now been used for diagnosis, so from here on it is a
+development check, not a clean test.

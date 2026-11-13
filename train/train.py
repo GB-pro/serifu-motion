@@ -419,6 +419,12 @@ def main():
     print(f'clips {len(clips)} train {len(train)} val {len(val)} load {time.time()-t0:.0f}s', flush=True)
     by_tr = {k: v for k, v in by_all.items() if k not in TEST_ACTORS | VAL_ACTORS}; by_va = {k: v for k, v in by_all.items() if k in VAL_ACTORS}
     print(f'actors: train {len(by_tr)} val {len(by_va)} excluded {len(by_all) - len(by_tr) - len(by_va)}; mix {mix}; globals {a.globals} ({len(G)})', flush=True)
+    skip = set(filter(None, os.environ.get('SKIP_SENT', '').split(',')))
+    if skip:  # experiment only (sent_holdout.py): these sentences are used neither for the weights nor for choosing the epoch
+        keep = lambda v: [c for c in v if c['name'].split('_')[1] not in skip]
+        cut = lambda by: {k: dict(A, clips=keep(A['clips']), by_emo={e: keep(v) for e, v in A['by_emo'].items()}) for k, A in by.items()}
+        by_tr, by_va = cut(by_tr), cut(by_va)
+        print(f'sentences left out: {sorted(skip)}; training lines {sum(len(A["clips"]) for A in by_tr.values())}', flush=True)
     causal = a.mode == 'realtime'
     la = 4 if causal else 0
     model = TCN(FEAT_DIM + len(G), K + NE + NA, C=a.C, causal=causal, drop=a.drop)

@@ -1,0 +1,22 @@
+clips 7438 train 5398 val 571 load 15s
+actors: train 66 val 7 excluded 18; mix [0.3, 0.2, 0.25, 0.25]; globals none (0)
+sentences left out: ['DFA', 'IEO', 'IOM']; training lines 3551
+ep 0 val 1.9225 {'mse': 0.857, 'vel': 0.084, 'std': 0.4, 'ce': 1.659, 'cec': 1.616, 'acc': 0.301, 'aux': 0.835} 66s
+ep 1 val 1.8362 {'mse': 0.866, 'vel': 0.078, 'std': 0.308, 'ce': 1.526, 'cec': 1.457, 'acc': 0.416, 'aux': 0.816} 118s
+ep 2 val 1.6882 {'mse': 0.826, 'vel': 0.077, 'std': 0.308, 'ce': 1.279, 'cec': 1.181, 'acc': 0.557, 'aux': 0.813} 169s
+ep 3 val 1.6212 {'mse': 0.809, 'vel': 0.078, 'std': 0.257, 'ce': 1.202, 'cec': 1.11, 'acc': 0.598, 'aux': 0.796} 219s
+ep 4 val 1.6261 {'mse': 0.846, 'vel': 0.079, 'std': 0.251, 'ce': 1.14, 'cec': 1.021, 'acc': 0.633, 'aux': 0.797} 268s
+ep 5 val 1.5608 {'mse': 0.801, 'vel': 0.078, 'std': 0.252, 'ce': 1.094, 'cec': 0.986, 'acc': 0.641, 'aux': 0.783} 323s
+ep 6 val 1.5907 {'mse': 0.804, 'vel': 0.079, 'std': 0.251, 'ce': 1.165, 'cec': 1.07, 'acc': 0.621, 'aux': 0.767} 372s
+ep 7 val 1.5203 {'mse': 0.79, 'vel': 0.079, 'std': 0.267, 'ce': 1.028, 'cec': 0.911, 'acc': 0.67, 'aux': 0.764} 421s
+ep 8 val 1.5255 {'mse': 0.785, 'vel': 0.079, 'std': 0.264, 'ce': 1.062, 'cec': 0.944, 'acc': 0.673, 'aux': 0.757} 472s
+ep 9 val 1.5425 {'mse': 0.792, 'vel': 0.079, 'std': 0.249, 'ce': 1.082, 'cec': 0.975, 'acc': 0.657, 'aux': 0.769} 528s
+ep 10 val 1.5411 {'mse': 0.803, 'vel': 0.079, 'std': 0.243, 'ce': 1.067, 'cec': 0.952, 'acc': 0.665, 'aux': 0.759} 585s
+ep 11 val 1.5426 {'mse': 0.793, 'vel': 0.079, 'std': 0.249, 'ce': 1.089, 'cec': 0.967, 'acc': 0.64, 'aux': 0.766} 644s
+ep 12 val 1.5343 {'mse': 0.789, 'vel': 0.079, 'std': 0.244, 'ce': 1.089, 'cec': 0.972, 'acc': 0.669, 'aux': 0.753} 697s
+ep 13 val 1.5316 {'mse': 0.788, 'vel': 0.079, 'std': 0.243, 'ce': 1.087, 'cec': 0.968, 'acc': 0.657, 'aux': 0.755} 749s
+ep 14 val 1.5256 {'mse': 0.785, 'vel': 0.079, 'std': 0.244, 'ce': 1.078, 'cec': 0.959, 'acc': 0.667, 'aux': 0.754} 799s
+ep 15 val 1.5282 {'mse': 0.786, 'vel': 0.079, 'std': 0.244, 'ce': 1.082, 'cec': 0.963, 'acc': 0.661, 'aux': 0.754} 848s
+validation reading by recording: all 0.688  six 0.675  three 0.648  single 0.624  same 0.619  same_long 0.619
+  single line by emotion {'NEU': 0.67, 'HAP': 0.71, 'SAD': 0.47, 'ANG': 0.87, 'FEA': 0.46, 'DIS': 0.56}  one emotion {'NEU': 0.66, 'HAP': 0.65, 'SAD': 0.45, 'ANG': 0.9, 'FEA': 0.43, 'DIS': 0.62}
+saved <out>/foldA.json best 1.5202688723802567 aux r [0.5361249513164896, 0.427166205637251]

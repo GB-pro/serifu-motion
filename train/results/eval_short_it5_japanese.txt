@@ -1,0 +1,12 @@
+# Check on Japanese speech (SPLITS.md), fixed before measuring: networks and app code as frozen in commit 062641a, measured once on 2026-11-14.
+# Material: 声優統計コーパス (voice-statistics.github.io), 3 voice actresses x 100 sentences x normal/happy/angry = 900 lines in 12 sessions of 75 lines.
+# The audio may be used for analysis only and is not in this repository; only these numbers are.
+# node train/eval_short.mjs app/models/emo_offline.json,app/models/emo_offline_b.json,app/models/emo_offline_c.json <features of the 12 sessions> 2011,...,2034
+# The row labels are those of the CREMA-D runs. Here: 'all 82 lines' = the 75 lines of a session; 'about 6 lines, one per emotion' and
+# '3 lines' = one sentence in its three emotions; 'about 13 lines, all in the same emotion' = the 25 lines of a session in one emotion.
+# Six classes are read, so chance is 0.167. Marks: 1 line 0.55, same emotion 0.55, all lines 0.64. None is met.
+all 82 lines of the speaker (as in the main evaluation)    0.156 n 900   NEU 0.00  HAP 0.00  SAD n/a  ANG 0.47  FEA n/a  DIS n/a
+about 6 lines, one per emotion                             0.161 n 900   NEU 0.00  HAP 0.00  SAD n/a  ANG 0.48  FEA n/a  DIS n/a
+3 lines                                                    0.161 n 900   NEU 0.00  HAP 0.00  SAD n/a  ANG 0.48  FEA n/a  DIS n/a
+1 line on its own                                          0.122 n 900   NEU 0.00  HAP 0.00  SAD n/a  ANG 0.37  FEA n/a  DIS n/a
+about 13 lines, all in the same emotion                    0.116 n 900   NEU 0.00  HAP 0.00  SAD n/a  ANG 0.35  FEA n/a  DIS n/a

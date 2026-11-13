@@ -1,0 +1,22 @@
+# Reading of sentences the networks never saw (sent_holdout.py), 2026-11-14. Four networks trained like app/models/emo_offline.json,
+# each without three of the twelve CREMA-D sentences; lines of the validation speakers. Logs: train/sent_holdout_fold{A,B,C,D}.log
+validation speakers [1076, 1077, 1078, 1079, 1080, 1081, 1082]: 571 lines; share of lines whose emotion is read correctly (chance 0.167)
+
+single line (n 571)
+  unseen      0.490   by fold: A 0.480  B 0.512  C 0.500  D 0.476   by emotion: NEU 0.43  HAP 0.39  SAD 0.46  ANG 0.77  FEA 0.40  DIS 0.49
+  all twelve  0.662   by fold: A 0.658  B 0.696  C 0.718  D 0.579   by emotion: NEU 0.80  HAP 0.70  SAD 0.53  ANG 0.88  FEA 0.51  DIS 0.57
+  seen, 9     0.643   by fold: A 0.673  B 0.640  C 0.653  D 0.587   by emotion: NEU 0.76  HAP 0.73  SAD 0.51  ANG 0.90  FEA 0.37  DIS 0.61
+  unseen minus all twelve: -17.2 points (standard error 2.4); lines right only when the sentence was seen 140, right only when unseen 42
+
+three sentences as one recording (n 571)
+  unseen      0.532   by fold: A 0.526  B 0.560  C 0.597  D 0.452   by emotion: NEU 0.43  HAP 0.46  SAD 0.58  ANG 0.78  FEA 0.42  DIS 0.52
+  all twelve  0.676   by fold: A 0.668  B 0.680  C 0.710  D 0.651   by emotion: NEU 0.80  HAP 0.76  SAD 0.48  ANG 0.88  FEA 0.54  DIS 0.61
+  seen, 9     0.688   by fold: A 0.709  B 0.680  C 0.685  D 0.667   by emotion: NEU 0.78  HAP 0.73  SAD 0.58  ANG 0.92  FEA 0.46  DIS 0.67
+  unseen minus all twelve: -14.4 points (standard error 2.4); lines right only when the sentence was seen 133, right only when unseen 51
+
+long recording (n 571)
+  unseen      0.545   by fold: A 0.551  B 0.568  C 0.573  D 0.484   by emotion: NEU 0.45  HAP 0.47  SAD 0.57  ANG 0.77  FEA 0.46  DIS 0.54
+  all twelve  0.664   by fold: A 0.653  B 0.672  C 0.677  D 0.659   by emotion: NEU 0.82  HAP 0.73  SAD 0.46  ANG 0.89  FEA 0.52  DIS 0.58
+  seen, 9     0.685   by fold: A 0.699  B 0.680  C 0.677  D 0.675   by emotion: NEU 0.79  HAP 0.72  SAD 0.55  ANG 0.92  FEA 0.46  DIS 0.68
+  unseen minus all twelve: -11.9 points (standard error 2.4); lines right only when the sentence was seen 125, right only when unseen 57
+

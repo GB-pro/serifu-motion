@@ -1,0 +1,11 @@
+# Check on Japanese speech (SPLITS.md), fixed before measuring: networks and app code as frozen in commit 062641a, measured once on 2026-11-14.
+# node train/eval_live.mjs app/models/emo_realtime.json,app/models/emo_realtime_b.json <16 kHz audio of the 12 sessions> 2011,...,2034   (audio not in this repository)
+# Mark: the emotion played at the end of the line is the acted one in at least 0.55 of the lines. Measured: 0.173 (chance 0.167).
+{"lines":900,"frames":268198,"nonFinite":0,"played_right_after_0_5s":"0.052","after_1s":"0.058","at_end_of_line":"0.173","at_end_after_the_first_6_lines":"0.174","network_latest_answer_right":["0.056","0.078","0.166"],"maxHeadStepDeg":4.2,"jawClosedInSilence":1}
+played at the end of the line (rows = acted): NEU HAP SAD ANG FEA DIS
+NEU    1   13   13  101  158   14
+HAP    0   24    0  211   62    3
+SAD    0    0    0    0    0    0
+ANG    0   70   15  131   75    9
+FEA    0    0    0    0    0    0
+DIS    0    0    0    0    0    0

@@ -1,0 +1,7 @@
+# Dependence of the reading on the room noise of the training recordings (floor_check.py), 2026-11-14, networks of iteration 5 (commit 062641a).
+validation speakers [1076, 1077, 1078, 1079, 1080, 1081, 1082]: 571 lines; share of lines whose emotion is read correctly
+
+long recording, as recorded: 0.736   right by emotion: NEU 0.88  HAP 0.86  SAD 0.57  ANG 0.89  FEA 0.53  DIS 0.71   answers: NEU 108  HAP 117  SAD 72  ANG 106  FEA 74  DIS 94
+single line, as recorded: 0.688   right by emotion: NEU 0.84  HAP 0.79  SAD 0.60  ANG 0.86  FEA 0.46  DIS 0.61   answers: NEU 109  HAP 116  SAD 87  ANG 114  FEA 65  DIS 80
+long recording, silent between the words: 0.534   right by emotion: NEU 0.37  HAP 0.79  SAD 0.14  ANG 0.93  FEA 0.50  DIS 0.45   answers: NEU 36  HAP 190  SAD 18  ANG 183  FEA 82  DIS 62
+single line, silent between the words: 0.366   right by emotion: NEU 0.06  HAP 0.64  SAD 0.00  ANG 0.95  FEA 0.40  DIS 0.09   answers: NEU 9  HAP 181  SAD 0  ANG 301  FEA 69  DIS 11
