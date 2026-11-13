@@ -55,7 +55,7 @@ How to read it:
 - Every speaker of CREMA-D has now been used for training, tuning or a check. A further clean check needs speakers
   from outside this corpus.
 
-## Check on Japanese speech: fixed before any Japanese audio was measured (2026-11-14, 07:25 JST)
+## Check on Japanese speech: fixed before any Japanese audio was measured (2026-11-14, 07:10 JST)
 
 Nothing Japanese has been used for training or tuning, and no Japanese audio has been run through the networks so far.
 
