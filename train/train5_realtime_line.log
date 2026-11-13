@@ -1,0 +1,24 @@
+clips 7438 train 5398 val 571 load 13s
+actors: train 66 val 7 excluded 18; mix [1.0, 0.0, 0.0, 0.0]; globals none (0)
+live sessions: train actors 66 val actors 7
+ep 0 val 1.8971 {'mse': 0.89, 'vel': 0.081, 'std': 0.378, 'ce': 1.603, 'cec': 1.56, 'acc': 0.339, 'aux': 0.743} 63s
+ep 1 val 1.8418 {'mse': 0.892, 'vel': 0.076, 'std': 0.312, 'ce': 1.545, 'cec': 1.468, 'acc': 0.398, 'aux': 0.733} 114s
+ep 2 val 1.7565 {'mse': 0.882, 'vel': 0.075, 'std': 0.3, 'ce': 1.418, 'cec': 1.282, 'acc': 0.512, 'aux': 0.711} 166s
+ep 3 val 1.7176 {'mse': 0.873, 'vel': 0.075, 'std': 0.302, 'ce': 1.338, 'cec': 1.206, 'acc': 0.564, 'aux': 0.714} 218s
+ep 4 val 1.6561 {'mse': 0.863, 'vel': 0.076, 'std': 0.277, 'ce': 1.255, 'cec': 1.087, 'acc': 0.605, 'aux': 0.705} 272s
+ep 5 val 1.6442 {'mse': 0.861, 'vel': 0.078, 'std': 0.288, 'ce': 1.239, 'cec': 1.042, 'acc': 0.62, 'aux': 0.705} 326s
+ep 6 val 1.6394 {'mse': 0.848, 'vel': 0.077, 'std': 0.292, 'ce': 1.278, 'cec': 1.054, 'acc': 0.6, 'aux': 0.7} 378s
+ep 7 val 1.6636 {'mse': 0.86, 'vel': 0.079, 'std': 0.284, 'ce': 1.33, 'cec': 1.069, 'acc': 0.567, 'aux': 0.707} 430s
+ep 8 val 1.6193 {'mse': 0.85, 'vel': 0.078, 'std': 0.282, 'ce': 1.259, 'cec': 0.992, 'acc': 0.621, 'aux': 0.698} 479s
+ep 9 val 1.6562 {'mse': 0.857, 'vel': 0.079, 'std': 0.266, 'ce': 1.356, 'cec': 1.064, 'acc': 0.595, 'aux': 0.703} 530s
+ep 10 val 1.6314 {'mse': 0.853, 'vel': 0.079, 'std': 0.272, 'ce': 1.305, 'cec': 1.002, 'acc': 0.612, 'aux': 0.702} 581s
+ep 11 val 1.6551 {'mse': 0.865, 'vel': 0.08, 'std': 0.263, 'ce': 1.354, 'cec': 1.034, 'acc': 0.601, 'aux': 0.7} 633s
+ep 12 val 1.6239 {'mse': 0.847, 'vel': 0.079, 'std': 0.27, 'ce': 1.31, 'cec': 1.004, 'acc': 0.601, 'aux': 0.696} 685s
+ep 13 val 1.6261 {'mse': 0.852, 'vel': 0.08, 'std': 0.265, 'ce': 1.309, 'cec': 0.996, 'acc': 0.615, 'aux': 0.698} 738s
+ep 14 val 1.6198 {'mse': 0.851, 'vel': 0.08, 'std': 0.266, 'ce': 1.301, 'cec': 0.983, 'acc': 0.611, 'aux': 0.696} 789s
+ep 15 val 1.6216 {'mse': 0.851, 'vel': 0.08, 'std': 0.266, 'ce': 1.305, 'cec': 0.987, 'acc': 0.604, 'aux': 0.696} 838s
+validation reading by recording: all 0.662  six 0.662  three 0.623  single 0.546  same 0.553  same_long 0.553
+  single line by emotion {'NEU': 0.77, 'HAP': 0.52, 'SAD': 0.14, 'ANG': 0.9, 'FEA': 0.42, 'DIS': 0.56}  one emotion {'NEU': 0.77, 'HAP': 0.45, 'SAD': 0.18, 'ANG': 0.91, 'FEA': 0.47, 'DIS': 0.58}
+validation live: {'heard_0.5s': 0.4378, 'heard_1s': 0.5618, 'heard_end': 0.5867, 'played_0.5s': 0.3573, 'played_1s': 0.5, 'played_end': 0.5569}  played at the end by emotion {'NEU': 0.57, 'HAP': 0.63, 'SAD': 0.4, 'ANG': 0.88, 'FEA': 0.41, 'DIS': 0.45}
+saved <out>/RTb.json best 1.6193345189094543 aux r [0.5300154573825695, 0.3998747137454344]
+# note added afterwards: the 'validation live' line above was measured with the live listening rule in force when this network was trained (a pause of 8 frames started a new line). With the rule of the frozen app (a pause under 15 frames continues the line) the same network gives heard_end 0.674, played_end 0.646 (train/evalpy.py --live-eval).

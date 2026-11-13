@@ -26,9 +26,9 @@ class App {
     this.i18n();
     this.busy(t('analyzing'));
     const J = (u) => fetch(u).then((r) => r.json());
-    // three offline networks read the speech as a committee; the acting profiles give each avatar its own way of moving
-    const [off, rt, acting, ...extra] = await Promise.all([J('models/emo_offline.json'), J('models/emo_realtime.json'), J('avatar/acting.json'), J('models/emo_offline_b.json').catch(() => null), J('models/emo_offline_c.json').catch(() => null)]);
-    this.rtModel = rt; this.acting = acting;
+    // three offline networks read the speech as a committee (live: one or two realtime networks); the acting profiles give each avatar its own way of moving
+    const [off, rt, acting, rtB, ...extra] = await Promise.all([J('models/emo_offline.json'), J('models/emo_realtime.json'), J('avatar/acting.json'), J('models/emo_realtime_b.json').catch(() => null), J('models/emo_offline_b.json').catch(() => null), J('models/emo_offline_c.json').catch(() => null)]);
+    this.rtModel = rt; this.rtExtra = [rtB].filter(Boolean); this.acting = acting;
     this.gen = new EmoGenerator(off, rt, extra.filter(Boolean));
     this.composer = new Composer(this.gen.meta);
     $('#modelInfo').textContent = `${t('model')}: ${this.gen.meta.dataset} · ${this.gen.meta.trained_clips} clips`;
@@ -351,7 +351,7 @@ class App {
   }
   async startLive() {
     try {
-      this.live = new LiveSession({ rtModel: this.rtModel, video: $('#camPreview'), onStatus: () => {}, profile: this.acting[$('#liveAvatar').value], style: $('#liveStyle') ? $('#liveStyle').value : 'anime' });
+      this.live = new LiveSession({ rtModel: this.rtModel, rtExtra: this.rtExtra, video: $('#camPreview'), onStatus: () => {}, profile: this.acting[$('#liveAvatar').value], style: $('#liveStyle') ? $('#liveStyle').value : 'anime' });
       this.live.useCamMouth = $('#camMouth').checked; this.live.useCamBlink = $('#camBlink').checked;
       await this.live.start();
       $('#liveStart').textContent = t('stopLive'); $('#liveRec').disabled = false;

@@ -26,7 +26,7 @@ export function analyzeSpeaker(sp) {
   return sp;
 }
 // the network's reading of the speech (emotion, accents, mouth): the slow step, done once per recording
-export function readSpeaker(sp, gen) { if (!sp.features) analyzeSpeaker(sp); sp.net = gen.runNet(sp.features, sp.T); return sp; }
+export function readSpeaker(sp, gen) { if (!sp.features || !sp.stats) analyzeSpeaker(sp); sp.net = gen.runNet(sp.features, sp.T, sp.stats); return sp; }
 // the performance built from that reading: fast, repeated after every change of emotion, avatar, style or strength
 export function directSpeaker(sp, gen, acting = null) {
   if (!sp.net) readSpeaker(sp, gen);

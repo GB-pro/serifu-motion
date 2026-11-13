@@ -23,7 +23,8 @@ for (const a of actorsArg.split(',')) {
   for (const p of parts) { offs.push(T + GAP); T += GAP + p.length / FEAT_DIM; } T += GAP;
   const F = new Float32Array(T * FEAT_DIM); for (let t = 0; t < T; t++) F[t * FEAT_DIM] = -4;
   parts.forEach((p, i) => F.set(p, offs[i] * FEAT_DIM));
-  const net = gen.runNet(F, T), seed = +a;
+  // the cached features were normalised with the statistics of all lines of the actor (feats.mjs)
+  const net = gen.runNet(F, T, JSON.parse(fs.readFileSync(path.join(featDir, a + '.stats.json')))), seed = +a;
   const an = analyzeSpeech(F, T, net.aux);
   const overrides = clips.map((f, i) => ({ start: (offs[i] - 4) / 30, end: (offs[i] + parts[i].length / FEAT_DIM + 4) / 30, emo: f.split('_')[2] }));
   const outs = { lin: gen.direct(net, F, T, { seed, style: 'natural' }), auto: gen.direct(net, F, T, { seed, style: 'anime', profile }), fix: gen.direct(net, F, T, { seed, style: 'anime', profile, overrides }) };

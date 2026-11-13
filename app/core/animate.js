@@ -625,6 +625,9 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
 // Live director: the same acting, decided causally (only the network's small look-ahead is available).
 //   step({feat, ahead, reg, p, aux, voiced, camVis}) -> Float32Array(K) rig-space frame
 // ---------------------------------------------------------------------------------------------------------
+// live: a pause of at least this many frames (0.5 s) starts a new line; a shorter one continues the line being spoken
+const NEW_LINE_GAP = 15;
+
 export class LiveDirector {
   constructor(meta, opts = {}) {
     this.meta = meta; this.seed = opts.seed ?? 7; this.r = rng(this.seed ^ 0x51ed);
@@ -683,13 +686,23 @@ export class LiveDirector {
     const sp = (f) => (f[1] > 0.5 || f[0] > -1.5 ? 1 : 0);
     const coming = ahead.some(sp);
     // ---- phrase boundaries ----
-    if (!this.inPhrase && (voiced || coming) && this.sil >= 8) {
-      // a new thought: blink, eyes back to the listener, take a first reading of the feeling and commit to a pose
-      this.inPhrase = true; this.phraseT = 0; this.acc.fill(0); this.accN = 0; this.eMean = 0; this.fMean = 0; this.eN = 0; this.auxI = 0.5; this.auxN = 0;
-      const d = this._decide();
-      perf.lookAt(0, 0); if (d.emo !== 'FEA' || r() < 0.4) this._blink(ACTING[d.emo].blinkDur);
-      this._pose(d.emo, clamp(0.45 + 0.5 * d.conf, 0.4, 0.8) * this.exaggeration, { fresh: true });
-      this.lookedAway = false;
+    if (!this.inPhrase && (voiced || coming)) {
+      if (this.sil >= NEW_LINE_GAP) {
+        // a new thought: blink, eyes back to the listener, take a first reading of the feeling and commit to a pose
+        this.inPhrase = true; this.phraseT = 0; this.acc.fill(0); this.accN = 0; this.eMean = 0; this.fMean = 0; this.eN = 0; this.auxI = 0.5; this.auxN = 0;
+        const d = this._decide();
+        perf.lookAt(0, 0); if (d.emo !== 'FEA' || r() < 0.4) this._blink(ACTING[d.emo].blinkDur);
+        this._pose(d.emo, clamp(0.45 + 0.5 * d.conf, 0.4, 0.8) * this.exaggeration, { fresh: true });
+        this.lookedAway = false;
+      } else {
+        // The same line goes on after a short pause (a breath, a stop consonant, a hesitation). What has been heard of
+        // the line stays, and so does the feeling being played: the performer takes the pose up again. (The first
+        // versions started from scratch after every pause of 0.27 s, guessed the feeling again from the context, and
+        // after a pause of exactly 6 or 7 frames did not listen to the rest of the line at all. Measured on the
+        // validation speakers, 44% of the lines ended in one of these two states.)
+        this.inPhrase = true; this.phraseT = 0;
+        perf.setPose(this.pose, perf.t);
+      }
     }
     if (voiced) this.sil = 0; else this.sil++;
     if (this.inPhrase) {

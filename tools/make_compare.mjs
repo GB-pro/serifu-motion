@@ -38,10 +38,10 @@ writeWav(path.join(outDir, name + '.wav'), audio);
 // the app's path for an imported file: features normalized by this speaker's own statistics
 const r = extractRaw(audio), st = speakerStats([r]), F = normalize(r.raw, r.nFrames, st), T = r.nFrames;
 const seed = [...name].reduce((s, c) => (s * 31 + c.charCodeAt(0)) >>> 0, 7);
-const lin = gen.generate(F, T, { seed, style: 'natural' });
-const auto = gen.generate(F, T, { seed, style: 'anime', profile });
+const lin = gen.generate(F, T, { seed, style: 'natural', stats: st });
+const auto = gen.generate(F, T, { seed, style: 'anime', profile, stats: st });
 const overrides = info.map((c) => ({ start: c.s0 / SR - 0.1, end: c.s1 / SR + 0.1, emo: c.label }));
-const fix = gen.generate(F, T, { seed, style: 'anime', profile, overrides });
+const fix = gen.generate(F, T, { seed, style: 'anime', profile, overrides, stats: st });
 for (const [k, o] of [['linear', lin], ['auto', auto], ['fix', fix]]) fs.writeFileSync(path.join(outDir, `${name}.${k}.f32`), Buffer.from(o.base.buffer, o.base.byteOffset, o.base.byteLength));
 for (const c of info) {
   c.f0 = Math.round(c.s0 / hop); c.f1 = Math.round(c.s1 / hop);

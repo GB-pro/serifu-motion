@@ -1,0 +1,7 @@
+# Iteration 5, validation speakers 1076-1082 (used for every tuning decision), app code and models as frozen
+# node train/eval_short.mjs app/models/emo_offline.json,app/models/emo_offline_b.json,app/models/emo_offline_c.json <feat> 1076,...,1082
+all 82 lines of the speaker (as in the main evaluation)    0.731 n 573   NEU 0.84  HAP 0.86  SAD 0.57  ANG 0.90  FEA 0.53  DIS 0.70
+about 6 lines, one per emotion                             0.743 n 573   NEU 0.81  HAP 0.86  SAD 0.60  ANG 0.92  FEA 0.52  DIS 0.77
+3 lines                                                    0.710 n 573   NEU 0.81  HAP 0.83  SAD 0.55  ANG 0.91  FEA 0.46  DIS 0.72
+1 line on its own                                          0.684 n 573   NEU 0.83  HAP 0.79  SAD 0.59  ANG 0.86  FEA 0.45  DIS 0.61
+about 13 lines, all in the same emotion                    0.639 n 573   NEU 0.89  HAP 0.73  SAD 0.37  ANG 0.80  FEA 0.41  DIS 0.67

@@ -8,15 +8,15 @@ const WORKLET = `class Tap extends AudioWorkletProcessor{process(i){const c=i[0]
 const CAM_MOUTH = ['AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24', 'AU28'];
 
 export class LiveSession {
-  constructor({ rtModel, onFrame, onStatus, video, base = './', profile = null, style = 'anime' }) {
-    this.rtModel = rtModel; this.onFrame = onFrame; this.onStatus = onStatus || (() => {});
+  constructor({ rtModel, rtExtra = [], onFrame, onStatus, video, base = './', profile = null, style = 'anime' }) {
+    this.rtModel = rtModel; this.rtExtra = rtExtra; this.onFrame = onFrame; this.onStatus = onStatus || (() => {});
     this.profile = profile; this.style = style;
     this.video = video; this.base = base;
     this.useCamMouth = true; this.useCamBlink = true;
     this.queue = []; this.cam = null; this.faceSeen = false; this.recording = null;
   }
   async start() {
-    this.emo = new LiveEmo(this.rtModel, { seed: Date.now() & 0xffff, profile: this.profile, style: this.style });
+    this.emo = new LiveEmo(this.rtModel, { seed: Date.now() & 0xffff, profile: this.profile, style: this.style, extra: this.rtExtra });
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },

@@ -1,14 +1,14 @@
 // Live mode, measured without a phone: every line of the given actors is streamed through the realtime path
 // (microphone-sized chunks -> streaming features -> causal network -> live director), lines joined into one session.
 // Reports which feeling is being PLAYED at 0.5 s and 1 s into each line and at its end, plus artifacts.
-// node train/eval_live.mjs <realtime.json> <wavDir> <actors,csv> [avatar] [switch margins a,b]
+// node train/eval_live.mjs <realtime.json[,more.json: committee]> <wavDir> <actors,csv> [avatar] [switch margins a,b]
 import fs from 'fs'; import path from 'path';
 import { LiveEmo } from '../app/core/generator.js';
 import { IDX, K, EMOS } from '../app/core/au.js';
 import { SR, FPS } from '../app/core/features.js';
 const [modelPath, wavDir, actorsArg, avatar = 'hana', marginsArg = ''] = process.argv.slice(2);
 const switchMargins = marginsArg ? marginsArg.split(',').map(Number) : undefined; // tuning runs only
-const rt = JSON.parse(fs.readFileSync(modelPath));
+const [rt, ...extra] = modelPath.split(',').map((m) => JSON.parse(fs.readFileSync(m)));
 const profile = JSON.parse(fs.readFileSync(new URL('../app/avatar/acting.json', import.meta.url)))[avatar] || null;
 function readWav(p) { const b = fs.readFileSync(p); let o = 12; while (o < b.length - 8) { const id = b.toString('ascii', o, o + 4), n = b.readUInt32LE(o + 4); if (id === 'data') { const x = new Float32Array(n >> 1); for (let i = 0; i < x.length; i++) x[i] = b.readInt16LE(o + 8 + i * 2) / 32768; return x; } o += 8 + n + (n & 1); } throw new Error('no data: ' + p); }
 const hop = SR / FPS, GAP = Math.round(0.8 * SR / hop) * hop;
@@ -16,7 +16,7 @@ const at = { early: [0, 0], mid: [0, 0], end: [0, 0] }, heard = { early: [0, 0],
 const hi = ['headPitch', 'headYaw', 'headRoll'].map((n) => IDX[n]);
 for (const a of actorsArg.split(',')) {
   const clips = fs.readdirSync(wavDir).filter((f) => f.startsWith(a + '_') && f.endsWith('.wav')).sort();
-  const live = new LiveEmo(rt, { seed: +a, style: 'anime', profile, switchMargins }), LA = live.meta.lookahead || 0;
+  const live = new LiveEmo(rt, { seed: +a, style: 'anime', profile, switchMargins, extra }), LA = live.meta.lookahead || 0;
   // diagnosis only: what if the speaker's voice statistics were known exactly from the start?
   if (process.env.ORACLE_STATS) { live.feat.stats = JSON.parse(fs.readFileSync(path.join(wavDir, a + '.stats.json'))); live.feat._updateStats = () => {}; live.feat.calibration = 1; }
   const out = []; const marks = []; let pos = 0;

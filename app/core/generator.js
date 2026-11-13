@@ -5,9 +5,9 @@
 // Camera input is NOT used here. All tracks leave this module in rig space (K channels, see au.js).
 import { EmoNet, StreamingEmoNet } from './model.js';
 import { IDS, K, KM, IDX, EMOS, CHANNELS, MOUTH_CHANNELS } from './au.js';
-import { FEAT_DIM, StreamingFeatures } from './features.js';
+import { FEAT_DIM, StreamingFeatures, globalFeatures } from './features.js';
 import { rng, gauss, softmax, clamp } from './util.js';
-import { directOffline, LiveDirector } from './animate.js';
+import { directOffline, LiveDirector, analyzeSpeech } from './animate.js';
 export { rng, softmax };
 
 const NOISE_CH = new Set(['AU1', 'AU2', 'AU4', 'AU5', 'AU6', 'AU7', 'AU12', 'gazeX', 'gazeY', 'headPitch', 'headYaw', 'headRoll', 'headZ', 'torsoRoll', 'torsoShift', 'torsoShrug', 'torsoLean']);
@@ -87,6 +87,9 @@ export class PostProcessor {
 }
 
 
+// the say of the 'relative' readers in the committee once a recording holds four lines or more (see runNet)
+export const RELATIVE_SHARE = 0.4;
+
 export class EmoGenerator {
   // extraJsons: further offline networks (same architecture, different random seeds). Their emotion and accent
   // readings are averaged with the main network's: a committee misreads less often than any single member.
@@ -96,12 +99,24 @@ export class EmoGenerator {
     this.extra = (extraJsons || []).map((j) => new EmoNet(j));
     this.meta = this.net.meta;
   }
+  // Network input: the frames with silence around them (clip edges then behave like the training sequences), and
+  // after each frame the recording-level inputs this model was trained with (meta.globals), constant over the recording.
+  _input(net, F, T, P, g) {
+    const D = net.Din, G = net.meta.globals || [], TT = T + 2 * P, X = new Float32Array(TT * D);
+    if (G.length && !g) throw new Error('this model needs the statistics of the recording (speakerStats)');
+    for (let t = 0; t < TT; t++) {
+      const s = t - P, o = t * D;
+      if (s >= 0 && s < T) X.set(F.subarray(s * FEAT_DIM, (s + 1) * FEAT_DIM), o); else X[o] = -4;
+      for (let j = 0; j < G.length; j++) X[o + FEAT_DIM + j] = g[G[j]];
+    }
+    return X;
+  }
   // raw reading of the speech: regression (denormalized, T*KM), emotion logits (T*6), aux accent/intensity signals (T*3)
-  runNet(F, T) {
+  // stats: the statistics the features were normalised with (speakerStats of the recording)
+  runNet(F, T, stats = null) {
     const net = this.net, meta = net.meta, D = net.Dout, NE = EMOS.length, NA = (meta.aux || []).length;
-    // pad with silence context so clip edges behave like the training sequences
-    const P = 30, TT = T + 2 * P, X = new Float32Array(TT * FEAT_DIM);
-    for (let t = 0; t < TT; t++) { const s = t - P; if (s >= 0 && s < T) X.set(F.subarray(s * FEAT_DIM, (s + 1) * FEAT_DIM), t * FEAT_DIM); else X[t * FEAT_DIM] = -4; }
+    const g = stats ? globalFeatures(stats) : null, same = (a, b) => a.Din === b.Din && String(a.meta.globals || []) === String(b.meta.globals || []);
+    const P = 30, TT = T + 2 * P, X = this._input(net, F, T, P, g);
     const Y = net.run(X, TT);
     const reg = new Float32Array(T * KM), logits = new Float32Array(T * NE), aux = NA ? new Float32Array(T * NA) : null;
     for (let t = 0; t < T; t++) {
@@ -111,26 +126,36 @@ export class EmoGenerator {
       for (let a = 0; a < NA; a++) aux[t * NA + a] = Y[o + KM + NE + a];
     }
     if (this.extra.length) {
-      // committee: average the emotion probabilities and the accent / intensity signals (mouth and motion stay with the main net)
-      const M = this.extra.length + 1, prob = new Float32Array(T * NE);
-      const add = (lg, o) => { const q = softmax(Array.from(lg.subarray(o, o + NE))); return q; };
-      for (let t = 0; t < T; t++) { const q = add(logits, t * NE); for (let e = 0; e < NE; e++) prob[t * NE + e] = q[e]; }
-      for (const ex of this.extra) {
-        const Z = ex.run(X, TT), Dz = ex.Dout;
+      // Committee: the emotion probabilities and the accent / intensity signals of several networks are combined
+      // (mouth and motion stay with the main network). Two kinds of reader sit on it (meta.reads):
+      //   'line'     trained on recordings of every kind: reads a line mostly from what is inside the line itself
+      //   'relative' trained on long recordings only: reads a line against the rest of the recording
+      // A relative reader is the better one when the recording holds several lines to compare, and has nothing to
+      // go on when it holds a single line. So its say grows with the number of lines (weights set on the validation
+      // speakers): none for one line, RELATIVE_SHARE from four lines on.
+      const nets = [net, ...this.extra], kind = nets.map((n) => n.meta.reads || 'relative');
+      const nRel = kind.filter((k) => k === 'relative').length, nLine = nets.length - nRel;
+      let share = nLine ? 0 : 1;
+      if (nRel && nLine) share = RELATIVE_SHARE * clamp((analyzeSpeech(F, T).phrases.length - 1) / 3, 0, 1);
+      const w = kind.map((k) => (k === 'relative' ? share / nRel : (1 - share) / nLine));
+      const prob = new Float32Array(T * NE), ax = NA ? new Float32Array(T * NA) : null;
+      nets.forEach((n, m) => {
+        if (!w[m]) return;
+        const Z = m === 0 ? Y : n.run(same(n, net) ? X : this._input(n, F, T, P, g), TT), Dz = n.Dout;
         for (let t = 0; t < T; t++) {
           const o = (t + P) * Dz, q = softmax(Array.from(Z.subarray(o + KM, o + KM + NE)));
-          for (let e = 0; e < NE; e++) prob[t * NE + e] += q[e];
-          for (let a = 0; a < NA; a++) aux[t * NA + a] += Z[o + KM + NE + a];
+          for (let e = 0; e < NE; e++) prob[t * NE + e] += w[m] * q[e];
+          for (let a = 0; a < NA; a++) ax[t * NA + a] += w[m] * Z[o + KM + NE + a];
         }
-      }
-      for (let i = 0; i < prob.length; i++) logits[i] = Math.log(prob[i] / M + 1e-9);
-      if (aux) for (let i = 0; i < aux.length; i++) aux[i] /= M;
+      });
+      for (let i = 0; i < prob.length; i++) logits[i] = Math.log(prob[i] + 1e-9);
+      if (aux) aux.set(ax);
     }
     return { reg, logits, aux };
   }
   // F: normalized features (T*FEAT_DIM). returns {T, base(T*K, rig space), emo(T*6), voiced(T), plan}
   // opts: { seed, style: 'anime' | 'natural', profile (character acting), overrides (emotion ranges), exaggeration }
-  generate(F, T, opts = {}) { return this.direct(this.runNet(F, T), F, T, opts); }
+  generate(F, T, opts = {}) { return this.direct(this.runNet(F, T, opts.stats || null), F, T, opts); }
   // Second half of generate(): turn a reading of the speech (from runNet) into motion. Cheap, so the app keeps the
   // reading and calls this again whenever the user changes an emotion, the avatar, the style or the strength.
   direct(net, F, T, opts = {}) {
@@ -159,12 +184,14 @@ export class EmoGenerator {
 
 // Realtime: microphone samples in, emo frames out (delayed by the causal model's lookahead, ~133 ms)
 export class LiveEmo {
-  // opts: { seed, style: 'anime' | 'natural', profile }
+  // opts: { seed, style: 'anime' | 'natural', profile, extra: further realtime networks whose reading of the feeling is
+  // averaged with the main network's (a committee, as offline; mouth, accents and motion stay with the main network) }
   constructor(realtimeJson, opts = {}) {
     this.net = new EmoNet(realtimeJson);
     this.sn = new StreamingEmoNet(this.net);
-    this.feat = new StreamingFeatures();
+    this.extra = (opts.extra || []).filter(Boolean).map((j) => new StreamingEmoNet(new EmoNet(j)));
     this.meta = this.net.meta;
+    this.feat = new StreamingFeatures({ globals: this.meta.globals || [] });
     this.style = opts.style || 'anime';
     this.pp = new PostProcessor(this.meta, opts);
     this.dir = new LiveDirector(this.meta, opts);
@@ -189,6 +216,15 @@ export class LiveEmo {
       const v = this.lastVoiced.length > meta.lookahead ? this.lastVoiced.shift() : 0;
       const fa = this.lastFeat.length > meta.lookahead ? this.lastFeat.shift() : null;
       const logits = Array.from(o.subarray(KM, KM + NE)), p = softmax(logits);
+      if (this.extra.length) {
+        // committee, as offline: 'line' readers and 'relative' readers (see runNet). A relative reader compares the line
+        // with the voice heard so far, so its say grows with what is known of the voice (calibration 0..1, about four
+        // lines) up to half.
+        const kinds = [this.net, ...this.extra.map((x) => x.net)].map((n) => n.meta.reads || 'relative'), nRel = kinds.filter((k) => k === 'relative').length, nLine = kinds.length - nRel;
+        const share = nRel && nLine ? 0.5 * this.feat.calibration : nLine ? 0 : 1, w = kinds.map((k) => (k === 'relative' ? share / nRel : (1 - share) / nLine));
+        for (let e = 0; e < NE; e++) p[e] *= w[0];
+        this.extra.forEach((ex, i) => { const z = ex.step(f), q = softmax(Array.from(z.subarray(KM, KM + NE))); for (let e = 0; e < NE; e++) p[e] += w[i + 1] * q[e]; });
+      }
       for (let e = 0; e < NE; e++) this.emo[e] = this.emo[e] * 0.97 + p[e] * 0.03;
       let y;
       if (this.style === 'natural') { const yy = Float32Array.from(reg); this.pp.frame(yy, v); y = linearToRig(yy, meta); }

@@ -67,10 +67,12 @@ def targets(d):
     return np.stack(T + E, 1).astype(np.float32)
 
 
-def load_all(feat_dir):
+def load_all(feat_dir, only=None):
     clips = []
     for f in sorted(glob.glob(os.path.join(feat_dir, '*.npz'))):
         name = os.path.basename(f)[:-4]
+        if only is not None and int(name[:4]) not in only:
+            continue
         ff = os.path.join(feat_dir, name + '.feat.f32')
         if not os.path.exists(ff):
             continue

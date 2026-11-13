@@ -1,0 +1,20 @@
+# Iteration 5, validation speakers 1076-1082 (used for every tuning decision), app code and models as frozen
+# node train/eval_live.mjs app/models/emo_realtime.json,app/models/emo_realtime_b.json <feat> 1076,...,1082
+{"lines":571,"frames":57299,"nonFinite":0,"played_right_after_0_5s":"0.395","after_1s":"0.591","at_end_of_line":"0.655","at_end_after_the_first_6_lines":"0.664","network_latest_answer_right":["0.482","0.636","0.713"],"maxHeadStepDeg":4.2,"jawClosedInSilence":1}
+played at the end of the line (rows = acted): NEU HAP SAD ANG FEA DIS
+NEU   58    4   10    2    1    7
+HAP    3   63    4    9    9   10
+SAD   12    2   56    0    6   21
+ANG    0    2    0   84    3    9
+FEA    6    6   15    8   48   15
+DIS   11    3    9    7    3   65
+
+# for comparison: the models and the live director of run 4 on the same speakers
+{"lines":571,"frames":57299,"nonFinite":0,"played_right_after_0_5s":"0.353","after_1s":"0.491","at_end_of_line":"0.546","at_end_after_the_first_6_lines":"0.560","network_latest_answer_right":["0.421","0.558","0.613"],"maxHeadStepDeg":4.2,"jawClosedInSilence":1}
+played at the end of the line (rows = acted): NEU HAP SAD ANG FEA DIS
+NEU   37   14    6    2   10   13
+HAP    1   47    4    6   25   15
+SAD   12    6   50    1   13   15
+ANG    0    1    5   72    6   14
+FEA    4    9   14    2   43   26
+DIS    3    1   11   16    4   63

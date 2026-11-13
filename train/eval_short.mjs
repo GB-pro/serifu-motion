@@ -18,7 +18,7 @@ function readSession(clips, seed) { // clips: [{name, raw, nFrames, emo}] -> emo
   let T = 0; const offs = []; for (const c of clips) { offs.push(T + GAP); T += GAP + c.nFrames; } T += GAP;
   const F = new Float32Array(T * FEAT_DIM); for (let t = 0; t < T; t++) F[t * FEAT_DIM] = -4;
   parts.forEach((p, i) => F.set(p, offs[i] * FEAT_DIM));
-  const net = gen.runNet(F, T), out = gen.direct(net, F, T, { seed, style: 'anime' });
+  const net = gen.runNet(F, T, st), out = gen.direct(net, F, T, { seed, style: 'anime' });
   return clips.map((c, i) => {
     const f0 = offs[i], f1 = offs[i] + c.nFrames, p = new Array(EMOS.length).fill(0); let w = 0;
     for (const ph of out.plan.phrases) { const d = Math.min(ph.t1, f1) - Math.max(ph.t0, f0); if (d > 0) { for (let e = 0; e < p.length; e++) p[e] += ph.p[e] * d; w += d; } }

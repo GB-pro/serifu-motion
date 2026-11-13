@@ -130,17 +130,22 @@ export function extractRaw(x) {
 // ---------- speaker statistics (for normalization) ----------
 export function speakerStats(rawList) {
   // rawList: array of {raw, nFrames}
-  const eAll = [], f0 = [], mf = Array.from({ length: NMFCC }, () => []), cent = [], flux = [];
+  const eAll = [], eV = [], f0 = [], mf = Array.from({ length: NMFCC }, () => []), cent = [], flux = [];
   for (const { raw, nFrames } of rawList) {
     for (let i = 0; i < nFrames; i++) {
       const o = i * RAW_DIM;
       eAll.push(raw[o]);
-      if (raw[o + 1] > 0) f0.push(Math.log2(raw[o + 1]) * 12);
+      if (raw[o + 1] > 0) { f0.push(Math.log2(raw[o + 1]) * 12); eV.push(raw[o]); }
     }
   }
   const eSorted = eAll.slice().sort((a, b) => a - b);
   const q = (arr, p) => arr.length ? arr[Math.min(arr.length - 1, Math.floor(p * arr.length))] : 0;
-  const eHi = q(eSorted, 0.9); // speech level
+  // Speech level: measured on the voiced frames only, so that it does not depend on how much of the recording is
+  // silence. (The first versions took the 90th percentile of all frames; in a recording where the speaker talks less
+  // than a tenth of the time that percentile lands on the silence, and the silence then counts as speech.) The 70th
+  // percentile of the voiced frames plus 0.5 dB gives the same level as the old rule on ordinary recordings.
+  // Without any voiced frame the level is not allowed below -40 dB, so that noise alone is not taken for speech.
+  const eHi = eV.length ? q(eV.sort((a, b) => a - b), 0.7) + 0.5 : Math.max(q(eSorted, 0.9), -40);
   const eThr = eHi - 25;
   for (const { raw, nFrames } of rawList) for (let i = 0; i < nFrames; i++) {
     const o = i * RAW_DIM;
@@ -157,16 +162,47 @@ export function speakerStats(rawList) {
     f0Median: f0s.length ? q(f0s, 0.5) : 12 * Math.log2(160),
     f0Spread: f0s.length > 10 ? Math.max(1.5, (q(f0s, 0.9) - q(f0s, 0.1)) / 2) : 3,
     mfMean: mf.map(mean), mfStd: null, centMean: mean(cent), centStd: 0, fluxMean: mean(flux), fluxStd: 0,
+    nVoiced: f0.length, // how much of the voice the statistics rest on (frames)
   };
   st.mfStd = mf.map((a, k) => std(a, st.mfMean[k]));
   st.centStd = std(cent, st.centMean); st.fluxStd = std(flux, st.fluxMean);
   return st;
 }
 
+// What is assumed about a voice before any of it has been heard (live mode blends these with the measured values while
+// the first seconds come in). Timbre and pitch range are the averages of the training speakers; the level is a guess
+// that keeps room noise from counting as speech.
 export const DEFAULT_STATS = {
-  eSpeech: -25, f0Median: 12 * Math.log2(170), f0Spread: 3,
-  mfMean: new Array(NMFCC).fill(0), mfStd: new Array(NMFCC).fill(10), centMean: 1500, centStd: 700, fluxMean: 2, fluxStd: 1,
+  eSpeech: -25, f0Median: 90.2, f0Spread: 7.5,
+  mfMean: [35.8, 11.4, 8.7, -0.3, -1.1, 0.2, -1.5, 0.3, -0.35, -0.3, -0.4, -1.65], mfStd: [14.2, 13.6, 8.5, 8.7, 6.3, 5.4, 4.8, 4.1, 3.9, 3.7, 3.6, 3.3],
+  centMean: 506, centStd: 563, fluxMean: 1.38, fluxStd: 0.94, nVoiced: 0,
 };
+
+// ---------- recording-level inputs ("globals") ----------
+// What the recording as a whole sounds like, in absolute terms. Everything in normalize() is relative to the recording
+// itself, so in a short recording, or one that is all in a single emotion, the cues "higher / louder / brighter than
+// this speaker usually is" are gone. These values give the network the absolute side: how high the voice is, how wide
+// its pitch moves, how much speech the statistics rest on, how strongly the timbre varies. A model lists the ones it
+// was trained with in meta.globals (indices into this vector). Centre and scale are rounded population values of the
+// corpus (audio statistics only); train/simnorm.py holds the same numbers.
+export const NG = 30;
+const POP = {
+  f0Median: 89.7, f0MedianS: 5, f0Spread: 7.5, f0SpreadS: 2, centMean: 520, centMeanS: 150, centStd: 620, centStdS: 230,
+  mfMean: [35, 12, 8.5, 0, -0.5, 0, -1.5, 0.5, -0.5, -0.5, -0.5, -1.5], mfMeanS: [4, 5, 3, 3.5, 2.5, 2, 2, 1.5, 1.5, 1.5, 1.5, 1.5],
+  mfStd: [14.5, 13.5, 8.5, 8.5, 6.5, 5.5, 5, 4, 4, 3.5, 3.5, 3.5], mfStdS: [2.5, 2.5, 1.5, 1.5, 1, 1, 1, 0.75, 0.75, 0.75, 0.75, 0.75],
+  fluxStd: 0.95, fluxStdS: 0.15,
+};
+export function globalFeatures(st, out = new Float32Array(NG)) {
+  const P = POP, c = (v) => Math.max(-4, Math.min(4, v));
+  out[0] = c((st.f0Median - P.f0Median) / P.f0MedianS);
+  out[1] = c((st.f0Spread - P.f0Spread) / P.f0SpreadS);
+  out[2] = Math.min(1, Math.log2(1 + (st.nVoiced || 0) / 75) / 6);
+  out[3] = c((st.centMean - P.centMean) / P.centMeanS);
+  out[4] = c((st.centStd - P.centStd) / P.centStdS);
+  for (let k = 0; k < NMFCC; k++) { out[5 + k] = c((st.mfMean[k] - P.mfMean[k]) / P.mfMeanS[k]); out[17 + k] = c((st.mfStd[k] - P.mfStd[k]) / P.mfStdS[k]); }
+  out[29] = c((st.fluxStd - P.fluxStd) / P.fluxStdS);
+  return out;
+}
 
 // ---------- normalized model input ----------
 // [0] energy rel speech level /10, [1] voiced, [2] f0 st rel median / spread, [3] d f0, [4] d energy,
@@ -197,7 +233,8 @@ export function normalize(raw, nFrames, st) {
 
 // ---------- streaming extractor for realtime mic ----------
 export class StreamingFeatures {
-  constructor() {
+  // opts.globals: indices of the recording-level inputs (globalFeatures) to append to every frame, as the model lists them
+  constructor(opts = {}) {
     this.buf = new Float32Array(SR * 4);
     this.len = 0; // samples written total
     this.frameIdx = 0;
@@ -205,8 +242,9 @@ export class StreamingFeatures {
     this.hist = [];
     this.prevF0 = 0; this.prevE = 0; this.lastVoiced = 0;
     this.calibration = 0; // 0..1: how well this speaker's own pitch and level are known yet
+    this.globals = opts.globals || []; this._g = new Float32Array(NG); globalFeatures(this.stats, this._g);
   }
-  // push mono 16k samples; returns array of new normalized frames (Float32Array FEAT_DIM)
+  // push mono 16k samples; returns array of new normalized frames (Float32Array FEAT_DIM, plus the model's globals)
   push(samples) {
     const out = [];
     for (let i = 0; i < samples.length; i++) { this.buf[this.len % this.buf.length] = samples[i]; this.len++; }
@@ -219,13 +257,18 @@ export class StreamingFeatures {
       for (let j = 0; j < w.length; j++) { const idx = s0 + j; w[j] = idx >= 0 && idx < this.len && idx > this.len - this.buf.length ? this.buf[idx % this.buf.length] : 0; }
       const r = rawAt(w, YIN_WIN / 2, this._prevMag);
       this._prevMag = r.mag;
-      this.hist.push(r.vals);
-      if (this.hist.length > 30 * 300) this.hist.shift(); // the speaker's statistics come from the last 5 minutes
-      if (this.frameIdx % (this.calibration < 1 ? 5 : 15) === 0 && this.hist.length > 20) this._updateStats();
-      out.push(this._norm(r.vals));
-      this.frameIdx++;
+      out.push(this.pushRaw(r.vals));
     }
     return out;
+  }
+  // one raw frame in, one normalized frame out; the statistics of the session so far are updated on the way.
+  // (Training replays recorded raw frames through this method, so the network learns from exactly what live mode sees.)
+  pushRaw(vals) {
+    this.hist.push(vals);
+    if (this.hist.length > 30 * 300) this.hist.shift(); // the speaker's statistics come from the last 5 minutes
+    if (this.frameIdx % (this.calibration < 1 ? 5 : 15) === 0 && this.hist.length > 20) this._updateStats();
+    this.frameIdx++;
+    return this._norm(vals);
   }
   _updateStats() {
     const n = this.hist.length;
@@ -234,17 +277,21 @@ export class StreamingFeatures {
     const s = speakerStats([{ raw, nFrames: n }]);
     // blend with the prior while little of the voice has been heard: about 2.5 s of voiced speech settle the speaker's
     // pitch and level (silence tells nothing about either, so only voiced frames count)
-    let nv = 0; for (const v of this.hist) if (v[1] > 0) nv++;
+    const nv = s.nVoiced;
     const a = Math.min(1, nv / 75); this.calibration = a;
     const d = DEFAULT_STATS, m = (x, y) => x * a + y * (1 - a);
     this.stats = {
       eSpeech: m(s.eSpeech, d.eSpeech), f0Median: m(s.f0Median, d.f0Median), f0Spread: m(s.f0Spread, d.f0Spread),
       mfMean: s.mfMean.map((v, k) => m(v, d.mfMean[k])), mfStd: s.mfStd.map((v, k) => m(v, d.mfStd[k])),
       centMean: m(s.centMean, d.centMean), centStd: m(s.centStd, d.centStd), fluxMean: m(s.fluxMean, d.fluxMean), fluxStd: m(s.fluxStd, d.fluxStd),
+      nVoiced: nv,
     };
+    globalFeatures(this.stats, this._g);
   }
   _norm(vals) {
-    const F = normalize(vals, 1, this.stats);
+    const F0 = normalize(vals, 1, this.stats), G = this.globals;
+    const F = G.length ? new Float32Array(FEAT_DIM + G.length) : F0;
+    if (G.length) { F.set(F0); for (let j = 0; j < G.length; j++) F[FEAT_DIM + j] = this._g[G[j]]; }
     // fix deltas using history state
     const v = F[1];
     F[3] = v && this.lastVoiced ? Math.max(-2, Math.min(2, F[2] - this.prevF0)) : 0;
