@@ -73,6 +73,19 @@ export class Character {
     return new THREE.Vector3(x / (d.sx * d.sx * t * t), y / (d.sy * d.sy), z / (d.sz * d.sz)).normalize();
   }
   onFace(x, y, off = 0.004) { const n = this.surfNormal(x, y); return new THREE.Vector3(x, y, this.surfZ(x, y)).addScaledVector(n, off); }
+  // The lower face of the head mesh slides down and back with the jaw, and the cheeks push forward in a smile
+  // (_updateJaw). The mouth is drawn on that deformed surface: on the analytic one a wide-open mouth sinks into the chin.
+  _jawW(y, z) { const my = this.d.mouth.y; return y < my + 0.02 && z > -0.2 ? clamp((my + 0.02 - y) / 0.25) * clamp((z + 0.2) / 0.6) : 0; }
+  onMouth(x, y, off) {
+    const jd = this._jawAmt || 0, my = this.d.mouth.y;
+    let y0 = y; // the point of the undeformed surface that the jaw carries to height y
+    if (jd > 0) for (let i = 0; i < 8; i++) y0 = y + this._jawW(y0, this.surfZ(x, y0)) * jd * 0.13;
+    const p = this.onFace(x, y0, off), w = jd > 0 ? this._jawW(y0, this.surfZ(x, y0)) : 0;
+    p.y -= w * jd * 0.13; p.z -= w * jd * 0.03;
+    const push = (this._smileAmt || 0) * 0.02 + (this._cheekAmt || 0) * 0.015;
+    if (push > 0) for (const s of [-1, 1]) { const dx = x - s * 0.38, dy = y0 - (my + 0.12); p.z += Math.exp(-(dx * dx + dy * dy) / 0.02) * push; }
+    return p;
+  }
 
   _mat(color, opts = {}) {
     return new THREE.MeshPhysicalMaterial({ color, roughness: opts.roughness ?? 0.55, metalness: 0, sheen: opts.sheen ?? 0.3, sheenColor: new THREE.Color(opts.sheenColor ?? '#ffd9c7'), clearcoat: opts.clearcoat ?? 0, clearcoatRoughness: 0.4, ...opts.extra });
@@ -398,7 +411,7 @@ export class Character {
   _strip(mesh, A, B, off) {
     const pos = [], idx = [], n = A.length;
     for (let i = 0; i < n; i++) {
-      const pa = this.onFace(A[i][0], A[i][1], off), pb = this.onFace(B[i][0], B[i][1], off);
+      const pa = this.onMouth(A[i][0], A[i][1], off), pb = this.onMouth(B[i][0], B[i][1], off);
       pos.push(pa.x, pa.y, pa.z, pb.x, pb.y, pb.z);
     }
     for (let i = 0; i < n - 1; i++) { const a = i * 2; idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
@@ -411,6 +424,8 @@ export class Character {
     const m = this.d.mouth;
     const cy = m.y, W = m.w / 2;
     const jaw = clamp(a.AU26 * 1.0 + a.AU16 * 0.2 + (a.AU25 || 0) * 0.15, 0, 0.95);
+    // the same amounts _updateJaw applies to the head mesh
+    this._jawAmt = clamp(a.AU26 * 1.0 + a.AU16 * 0.2, 0, 0.95) * m.open; this._smileAmt = Math.max(0, a.AU12); this._cheekAmt = Math.max(0, a.AU6 || 0);
     const smile = clamp(a.AU12, 0, 1.3), frown = clamp(a.AU15, 0, 1.2), stretch = clamp(a.AU20, 0, 1);
     const pucker = clamp(a.AU18, 0, 1), funnel = clamp(a.AU22, 0, 1), press = clamp(a.AU24, 0, 1), roll = clamp(a.AU28, 0, 1);
     const upUp = clamp(a.AU10, 0, 1), loDown = clamp(a.AU16, 0, 1), chin = clamp(a.AU17, 0, 1), dimple = clamp(a.AU14, 0, 1);

@@ -8,6 +8,7 @@ import fs from 'fs'; import path from 'path';
 import { EmoGenerator } from '../app/core/generator.js';
 import { FEAT_DIM } from '../app/core/features.js';
 import { K, EMOS } from '../app/core/au.js';
+import { analyzeSpeech } from '../app/core/animate.js';
 function readF32(p) { const b = fs.readFileSync(p); return new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)); }
 const [modelArg, featDir, outDir, actorsArg, avatar = 'hana'] = process.argv.slice(2);
 const models = modelArg.split(',').map((m) => JSON.parse(fs.readFileSync(m)));
@@ -23,6 +24,7 @@ for (const a of actorsArg.split(',')) {
   const F = new Float32Array(T * FEAT_DIM); for (let t = 0; t < T; t++) F[t * FEAT_DIM] = -4;
   parts.forEach((p, i) => F.set(p, offs[i] * FEAT_DIM));
   const net = gen.runNet(F, T), seed = +a;
+  const an = analyzeSpeech(F, T, net.aux);
   const overrides = clips.map((f, i) => ({ start: (offs[i] - 4) / 30, end: (offs[i] + parts[i].length / FEAT_DIM + 4) / 30, emo: f.split('_')[2] }));
   const outs = { lin: gen.direct(net, F, T, { seed, style: 'natural' }), auto: gen.direct(net, F, T, { seed, style: 'anime', profile }), fix: gen.direct(net, F, T, { seed, style: 'anime', profile, overrides }) };
   // the whole session too (continuous motion across lines, for the head-motion statistics)
@@ -31,7 +33,8 @@ for (const a of actorsArg.split(',')) {
   clips.forEach((f, i) => {
     const n = parts[i].length / FEAT_DIM, name = f.replace('.feat.f32', ''), f0 = offs[i], f1 = offs[i] + n;
     for (const k in outs) fs.writeFileSync(path.join(outDir, `${name}.${k}.f32`), Buffer.from(outs[k].base.slice(f0 * K, f1 * K).buffer));
-    const info = { name, n };
+    const info = { name, n, nuclei: an.phrases.flatMap((ph) => ph.nuclei.filter((u) => u.t >= f0 && u.t < f1).map((u) => ({ t: u.t - f0, score: +u.score.toFixed(3) }))) };
+    if (net.aux) fs.writeFileSync(path.join(outDir, `${name}.aux.f32`), Buffer.from(net.aux.slice(f0 * 3, f1 * 3).buffer));
     for (const k of ['auto', 'fix']) {
       const phs = outs[k].plan.phrases.filter((ph) => Math.min(ph.t1, f1) > Math.max(ph.t0, f0));
       const p = new Array(EMOS.length).fill(0); let w = 0; for (const ph of phs) { const d = Math.min(ph.t1, f1) - Math.max(ph.t0, f0); for (let e = 0; e < p.length; e++) p[e] += ph.p[e] * d; w += d; }

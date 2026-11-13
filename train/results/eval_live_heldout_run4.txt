@@ -1,0 +1,12 @@
+{"lines":738,"frames":76061,"nonFinite":0,"played_right_after_0_5s":"0.311","after_1s":"0.394","at_end_of_line":"0.478","at_end_after_the_first_6_lines":"0.494","network_latest_answer_right":["0.344","0.434","0.527"],"maxHeadStepDeg":4.2,"jawClosedInSilence":1}
+played at the end of the line (rows = acted): NEU HAP SAD ANG FEA DIS
+NEU   17   14    7    7   27   36
+HAP    4   38   10    9   46   19
+SAD    6    1   66    0   34   19
+ANG    2    1    5   92   13   13
+FEA    4    1   28    3   67   23
+DIS    2    2   26   11   12   73
+
+real	1m2.985s
+user	0m57.505s
+sys	0m0.387s

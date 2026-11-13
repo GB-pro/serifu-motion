@@ -1,0 +1,232 @@
+{
+ "criteria": {
+  "reading_acc_min": 0.6,
+  "lip_r_min": 0.5,
+  "accent_lift_min": 1.5,
+  "legible_ratio_min": 1.0,
+  "style_closer_share_min": 0.7,
+  "style_overact_max": 2.0,
+  "jaw_closed_silence_min": 0.9,
+  "max_head_step_deg": 7.0
+ },
+ "clips": 738,
+ "observer": {
+  "validation_accuracy_on_real_faces": 0.702276707530648,
+  "l2": 0.001
+ },
+ "legibility": {
+  "actor (tracked real face)": 0.5948509485094851,
+  "lin": 0.6124661246612466,
+  "lin per emotion": {
+   "NEU": 0.3425925925925926,
+   "HAP": 0.5634920634920635,
+   "SAD": 0.6825396825396826,
+   "ANG": 0.8650793650793651,
+   "FEA": 0.5238095238095238,
+   "DIS": 0.6587301587301587
+  },
+  "auto": 0.17479674796747968,
+  "auto, lines the network read correctly": 0.21205821205821207,
+  "reading accuracy in this run": 0.6517615176151762,
+  "auto, observer agrees with the emotion that was played": 0.3075880758807588,
+  "auto per emotion": {
+   "NEU": 0.009259259259259259,
+   "HAP": 0.0,
+   "SAD": 0.07936507936507936,
+   "ANG": 0.0,
+   "FEA": 0.7142857142857143,
+   "DIS": 0.2222222222222222
+  },
+  "fix": 0.16124661246612465,
+  "fix per emotion": {
+   "NEU": 0.0,
+   "HAP": 0.0,
+   "SAD": 0.0,
+   "ANG": 0.0,
+   "FEA": 0.626984126984127,
+   "DIS": 0.31746031746031744
+  }
+ },
+ "lip_sync_r": {
+  "lin": 0.6458061989467705,
+  "auto": 0.6396374005143873
+ },
+ "accent_timing": {
+  "accents": 1492,
+  "on_actor_emphasis": 0.7493297587131368,
+  "chance": 0.662204700345344,
+  "lift": 1.131568166644478
+ },
+ "artifacts": {
+  "lin": {
+   "max_head_step_deg": 10.160238265991211,
+   "jaw_closed_in_silence": 0.9570770044585506
+  },
+  "auto": {
+   "max_head_step_deg": 8.86152172088623,
+   "jaw_closed_in_silence": 0.8847578024635381
+  }
+ },
+ "style": {
+  "films": {
+   "head range pitch (deg, p95)": 12.715643882751465,
+   "head range yaw": 14.798145294189453,
+   "head range roll": 9.111190795898438,
+   "head speed, low-passed (deg/s)": 23.122708797470086,
+   "brow speed, low-passed (1/s)": 0.6822205680932952,
+   "brow raise inner range (AU1)": 0.4038035273551941,
+   "brow raise outer range (AU2)": 0.270393431186676,
+   "brow lower range (AU4)": 0.053770627826452255,
+   "eye widen range (AU5)": 0.15771932899951935,
+   "smile range (AU12)": 0.29518553614616394,
+   "asymmetry brows": 0.5140748023986816,
+   "asymmetry brow lowering": 0.40899115800857544,
+   "asymmetry smile": 0.3706428110599518,
+   "head moves per minute": 23.899413243922883,
+   "head move size (deg, median)": 4.253968238830566,
+   "head move peak speed (deg/s)": 45.198638916015625,
+   "face moves per minute": 47.798826487845766,
+   "blinks per minute": 6.035205364626991
+  },
+  "actors": {
+   "head range pitch (deg, p95)": 5.324368158039805,
+   "head range yaw": 2.830792288025633,
+   "head range roll": 2.8842748958751723,
+   "head speed, low-passed (deg/s)": 7.339122480509195,
+   "brow speed, low-passed (1/s)": 0.309766897415316,
+   "brow raise inner range (AU1)": 0.25256287223783147,
+   "brow raise outer range (AU2)": 0.19867607803316792,
+   "brow lower range (AU4)": 0.1810196040649318,
+   "eye widen range (AU5)": 0.0145855684990238,
+   "smile range (AU12)": 0.47093142417943484,
+   "asymmetry brows": 0.36530970806435425,
+   "asymmetry brow lowering": 0.11493517961641168,
+   "asymmetry smile": 0.12367112614527041,
+   "head moves per minute": 34.37940457356537,
+   "head move size (deg, median)": 4.137799989902771,
+   "head move peak speed (deg/s)": 27.206432807134327,
+   "face moves per minute": 22.877120003540252,
+   "blinks per minute": 11.932425405746274
+  },
+  "linear": {
+   "head range pitch (deg, p95)": 13.577672004699707,
+   "head range yaw": 6.218508243560791,
+   "head range roll": 11.790908813476562,
+   "head speed, low-passed (deg/s)": 29.70359326384693,
+   "brow speed, low-passed (1/s)": 0.8510242003271274,
+   "brow raise inner range (AU1)": 0.423620343208313,
+   "brow raise outer range (AU2)": 0.3141349256038666,
+   "brow lower range (AU4)": 0.03368129953742027,
+   "eye widen range (AU5)": 0.06473217904567719,
+   "smile range (AU12)": 0.7915660738945007,
+   "asymmetry brows": 0.4636378288269043,
+   "asymmetry brow lowering": 0.7926605343818665,
+   "asymmetry smile": 0.09278809279203415,
+   "head moves per minute": 6.101694915254237,
+   "head move size (deg, median)": 7.767699480056763,
+   "head move peak speed (deg/s)": 92.71059036254883,
+   "face moves per minute": 73.22033898305084,
+   "blinks per minute": 9.152542372881355
+  },
+  "linear_seconds": 19.666666666666668,
+  "linear_closer_to_films": {
+   "head range pitch (deg, p95)": true,
+   "head range yaw": false,
+   "head range roll": true,
+   "head speed, low-passed (deg/s)": true,
+   "brow speed, low-passed (1/s)": true,
+   "brow raise inner range (AU1)": true,
+   "brow raise outer range (AU2)": true,
+   "brow lower range (AU4)": true,
+   "eye widen range (AU5)": true,
+   "smile range (AU12)": false,
+   "asymmetry brows": true,
+   "asymmetry brow lowering": true,
+   "asymmetry smile": false,
+   "head moves per minute": true,
+   "head move size (deg, median)": true,
+   "head move peak speed (deg/s)": true,
+   "face moves per minute": true,
+   "blinks per minute": false
+  },
+  "linear_closer_share": 0.7777777777777778,
+  "linear_max_ratio_to_films": 2.6815882791172707,
+  "auto": {
+   "head range pitch (deg, p95)": 18.161964416503906,
+   "head range yaw": 8.310924530029297,
+   "head range roll": 12.996541023254395,
+   "head speed, low-passed (deg/s)": 26.39712863553758,
+   "brow speed, low-passed (1/s)": 0.8252540071375136,
+   "brow raise inner range (AU1)": 0.37153249979019165,
+   "brow raise outer range (AU2)": 0.335678368806839,
+   "brow lower range (AU4)": 0.011003202758729458,
+   "eye widen range (AU5)": 0.0821027085185051,
+   "smile range (AU12)": 0.5224900245666504,
+   "asymmetry brows": 0.4857899844646454,
+   "asymmetry brow lowering": null,
+   "asymmetry smile": 0.0718328207731247,
+   "head moves per minute": 42.54545454545455,
+   "head move size (deg, median)": 6.028329849243164,
+   "head move peak speed (deg/s)": 78.98482513427734,
+   "face moves per minute": 58.909090909090914,
+   "blinks per minute": 3.272727272727273
+  },
+  "auto_seconds": 18.333333333333332,
+  "auto_closer_to_films": {
+   "head range pitch (deg, p95)": true,
+   "head range yaw": true,
+   "head range roll": true,
+   "head speed, low-passed (deg/s)": true,
+   "brow speed, low-passed (1/s)": true,
+   "brow raise inner range (AU1)": true,
+   "brow raise outer range (AU2)": true,
+   "brow lower range (AU4)": true,
+   "eye widen range (AU5)": true,
+   "smile range (AU12)": false,
+   "asymmetry brows": true,
+   "asymmetry smile": false,
+   "head moves per minute": false,
+   "head move size (deg, median)": true,
+   "head move peak speed (deg/s)": true,
+   "face moves per minute": true,
+   "blinks per minute": true
+  },
+  "auto_closer_share": 0.8235294117647058,
+  "auto_max_ratio_to_films": 1.780188246097337
+ },
+ "verdict": {
+  "R reading accuracy": {
+   "value": 0.673,
+   "pass": true
+  },
+  "T lip sync r": {
+   "value": 0.6396374005143873,
+   "pass": true
+  },
+  "T accent lift": {
+   "value": 1.131568166644478,
+   "pass": false
+  },
+  "L legibility vs actor": {
+   "value": 0.29384965831435084,
+   "pass": false
+  },
+  "S closer to films (share)": {
+   "value": 0.8235294117647058,
+   "pass": true
+  },
+  "S over-acting guard (max ratio to films)": {
+   "value": 1.780188246097337,
+   "pass": true
+  },
+  "A jaw closed in silence": {
+   "value": 0.8847578024635381,
+   "pass": false
+  },
+  "A max head step": {
+   "value": 8.86152172088623,
+   "pass": false
+  }
+ },
+ "pass": false
+}

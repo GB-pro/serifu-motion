@@ -1,7 +1,7 @@
-"""Lay the recorded actor, the linear rendition and the animation-layer rendition side by side.
+"""Lay the recorded actor, the linear transfer of the actor's face and the animation-layer rendition side by side.
 python compose_compare.py <take.json> <flvDir> <framesRoot> <out.mp4> [main|fix]
-  framesRoot/<name>.linear/%05d.jpg, <name>.auto/..., <name>.fix/...  (rendered by render.mjs)
-  main: actor | linear | anime (automatic reading), whole take
+  framesRoot/<name>.actor/%05d.jpg, <name>.auto/..., <name>.fix/...  (rendered by render.mjs)
+  main: actor | actor's face transferred linearly | anime (from the voice alone, automatic reading), whole take
   fix : actor | anime (automatic, misread) | anime (emotion given), only the lines the network misread
 """
 import sys, os, json, subprocess, wave
@@ -61,12 +61,12 @@ def timeline(d, y, f, f_lo, f_hi, phrases):
             xa = X(ac['t']); s = 6 if ac['key'] else 4
             d.polygon([(xa - s, y + 58), (xa + s, y + 58), (xa, y + 48)], fill=FG if ac['key'] else DIM)
     xp = X(f); d.line([xp, y + 16, xp, y + 62], fill=(255, 255, 255), width=2)
-    d.text((x1 - 300, y + 50), '色: 読み取った感情 / ▲: アクセント(強調)', font=f13, fill=DIM)
 
 def frame(f, kinds, heads, subs, f_lo, f_hi, title, phrases):
     im = Image.new('RGB', (W, H), BG); d = ImageDraw.Draw(im)
     c = clip_at(f)
     d.text((16, 11), title, font=f22, fill=FG)
+    lg = '下の帯: 色 = 音声から読み取った感情、▲ = 強調のアクセント'; d.text((W - 16 - d.textlength(lg, font=f13), 18), lg, font=f13, fill=DIM)
     # actor
     im.paste((10, 11, 14), [0, TOP, PW, TOP + PH])
     i = f - c['f0']; fr = c['frames'][min(max(i, 0), len(c['frames']) - 1)]
@@ -79,7 +79,8 @@ def frame(f, kinds, heads, subs, f_lo, f_hi, title, phrases):
     d.text((250, y + 6), 'CREMA-D', font=f13, fill=DIM); d.text((250, y + 22), '(学習に使っていない俳優)', font=f13, fill=DIM)
     for j in range(2):
         x = PW * (j + 1) + 16
-        d.text((x, y), heads[j], font=f22, fill=FG)
+        h = heads[j] if isinstance(heads[j], tuple) else (heads[j], '')
+        d.text((x, y), h[0], font=f22, fill=FG); d.text((x + d.textlength(h[0], font=f22) + 10, y + 8), h[1], font=f13, fill=DIM)
         s = subs[j](c) if callable(subs[j]) else subs[j]
         if isinstance(s, tuple): d.text((x, y + 30), s[0], font=f15, fill=DIM); d.text((x + d.textlength(s[0], font=f15) + 6, y + 30), s[1], font=f15, fill=s[2])
         else: d.text((x, y + 30), s, font=f15, fill=DIM)
@@ -103,8 +104,8 @@ def encode(frames_iter, n, audio_segments, out):
 
 av = AV.get(tk['avatar'], tk['avatar'])
 if mode == 'main':
-    title = f'Serifu Motion  同じセリフ音声から作った動きの比較   アバター: {av}'
-    it = (frame(f, ['linear', 'auto'], ['リニア版 (前回の方式)', 'アニメ解釈版 (今回)'], ['学習した動きをそのまま線形に反映', read_sub], 0, T, title, plan) for f in range(T))
+    title = f'Serifu Motion  同じセリフの比較   アバター: {av}'
+    it = (frame(f, ['actor', 'auto'], [('リニア版', '前回の確認動画と同じ方式'), ('アニメ解釈版 (今回)', '音声だけから生成')], ['俳優の顔の動きをそのまま反映', read_sub], 0, T, title, plan) for f in range(T))
     encode(it, T, [(0, T)], out)
 else:
     bad = [c for c in clips if not c['ok']]

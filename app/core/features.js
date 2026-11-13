@@ -204,6 +204,7 @@ export class StreamingFeatures {
     this.stats = JSON.parse(JSON.stringify(DEFAULT_STATS));
     this.hist = [];
     this.prevF0 = 0; this.prevE = 0; this.lastVoiced = 0;
+    this.calibration = 0; // 0..1: how well this speaker's own pitch and level are known yet
   }
   // push mono 16k samples; returns array of new normalized frames (Float32Array FEAT_DIM)
   push(samples) {
@@ -219,8 +220,8 @@ export class StreamingFeatures {
       const r = rawAt(w, YIN_WIN / 2, this._prevMag);
       this._prevMag = r.mag;
       this.hist.push(r.vals);
-      if (this.hist.length > 30 * 60) this.hist.shift();
-      if (this.frameIdx % 15 === 0 && this.hist.length > 20) this._updateStats();
+      if (this.hist.length > 30 * 300) this.hist.shift(); // the speaker's statistics come from the last 5 minutes
+      if (this.frameIdx % (this.calibration < 1 ? 5 : 15) === 0 && this.hist.length > 20) this._updateStats();
       out.push(this._norm(r.vals));
       this.frameIdx++;
     }
@@ -231,8 +232,10 @@ export class StreamingFeatures {
     const raw = new Float32Array(n * RAW_DIM);
     this.hist.forEach((v, i) => raw.set(v, i * RAW_DIM));
     const s = speakerStats([{ raw, nFrames: n }]);
-    // blend with prior while little data
-    const a = Math.min(1, n / 300);
+    // blend with the prior while little of the voice has been heard: about 2.5 s of voiced speech settle the speaker's
+    // pitch and level (silence tells nothing about either, so only voiced frames count)
+    let nv = 0; for (const v of this.hist) if (v[1] > 0) nv++;
+    const a = Math.min(1, nv / 75); this.calibration = a;
     const d = DEFAULT_STATS, m = (x, y) => x * a + y * (1 - a);
     this.stats = {
       eSpeech: m(s.eSpeech, d.eSpeech), f0Median: m(s.f0Median, d.f0Median), f0Spread: m(s.f0Spread, d.f0Spread),

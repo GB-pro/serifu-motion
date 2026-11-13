@@ -58,12 +58,12 @@ export const POSES = {
 
 // How each emotion moves: spring tempo / damping, accent recipe, blink rhythm, breathing, what the eyes do in pauses.
 export const ACTING = {
-  NEU: { tempo: 1.0, zeta: 0.55, accents: ['nod', 'nod', 'tilt', 'brow'], amp: 0.8, blink: 3.4, blinkDur: 1, breath: 3.8, breathAmp: 0.5, drift: 1.0, tremble: 0, relax: 0.55, look: 'think', browF0: 1.0, lead: 5 },
-  HAP: { tempo: 1.08, zeta: 0.42, accents: ['bounce', 'bounce', 'tilt', 'up'], amp: 1.0, blink: 2.8, blinkDur: 1, breath: 3.2, breathAmp: 0.7, drift: 1.2, tremble: 0, relax: 0.7, look: 'glance', browF0: 1.2, lead: 5 },
-  SAD: { tempo: 0.6, zeta: 0.9, accents: ['droop', 'sway', 'droop'], amp: 0.6, blink: 4.6, blinkDur: 1.7, breath: 5.0, breathAmp: 0.9, drift: 0.6, tremble: 0, relax: 0.85, look: 'down', browF0: 0.5, lead: 7 },
-  ANG: { tempo: 1.2, zeta: 0.5, accents: ['thrust', 'thrust', 'shake'], amp: 1.15, blink: 6.5, blinkDur: 0.9, breath: 2.4, breathAmp: 1.0, drift: 0.5, tremble: 0.15, relax: 0.8, look: 'stare', browF0: 0.0, lead: 4 },
-  FEA: { tempo: 1.35, zeta: 0.4, accents: ['recoil', 'jerk', 'recoil'], amp: 0.9, blink: 1.9, blinkDur: 0.8, breath: 1.9, breathAmp: 1.1, drift: 0.7, tremble: 1.0, relax: 0.8, look: 'dart', browF0: 0.6, lead: 3 },
-  DIS: { tempo: 0.88, zeta: 0.6, accents: ['away', 'nod', 'away'], amp: 0.85, blink: 4.0, blinkDur: 1.2, breath: 3.6, breathAmp: 0.6, drift: 0.7, tremble: 0, relax: 0.75, look: 'aside', browF0: 0.2, lead: 5 },
+  NEU: { tempo: 1.0, zeta: 0.55, accents: ['nod', 'nod', 'tilt', 'brow'], amp: 0.8, blink: 3.9, blinkDur: 1, breath: 3.8, breathAmp: 0.5, drift: 1.0, tremble: 0, relax: 0.55, look: 'think', browF0: 1.0, lead: 8 },
+  HAP: { tempo: 1.08, zeta: 0.42, accents: ['bounce', 'bounce', 'tilt', 'up'], amp: 1.0, blink: 3.3, blinkDur: 1, breath: 3.2, breathAmp: 0.7, drift: 1.2, tremble: 0, relax: 0.7, look: 'glance', browF0: 1.2, lead: 8 },
+  SAD: { tempo: 0.6, zeta: 0.9, accents: ['droop', 'sway', 'droop'], amp: 0.6, blink: 5.2, blinkDur: 1.7, breath: 5.0, breathAmp: 0.9, drift: 0.6, tremble: 0, relax: 0.85, look: 'down', browF0: 0.5, lead: 11 },
+  ANG: { tempo: 1.2, zeta: 0.5, accents: ['thrust', 'thrust', 'shake'], amp: 1.15, blink: 7.0, blinkDur: 0.9, breath: 2.4, breathAmp: 1.0, drift: 0.5, tremble: 0.15, relax: 0.8, look: 'stare', browF0: 0.0, lead: 7 },
+  FEA: { tempo: 1.35, zeta: 0.4, accents: ['recoil', 'jerk', 'recoil'], amp: 0.9, blink: 2.4, blinkDur: 0.8, breath: 1.9, breathAmp: 1.1, drift: 0.7, tremble: 1.0, relax: 0.8, look: 'dart', browF0: 0.6, lead: 5 },
+  DIS: { tempo: 0.88, zeta: 0.6, accents: ['away', 'nod', 'away'], amp: 0.85, blink: 4.6, blinkDur: 1.2, breath: 3.6, breathAmp: 0.6, drift: 0.7, tremble: 0, relax: 0.75, look: 'aside', browF0: 0.2, lead: 8 },
 };
 
 // default acting personality (characters override: see avatar/characters.js `acting`)
@@ -77,7 +77,7 @@ function gesture(kind, A, side, key, prof, fast = false) {
   const B = prof.body * (key ? 1 : 0.45), q = prof.bounce;
   const c = {};
   // live mode has no look-ahead: the anticipation is compressed so the hit still lands on the syllable
-  const k = (id, pts, s = 1) => { c[id] = pts.map(([t, v]) => [fast && t < 0 ? t * 0.45 : t, v * s]); };
+  const k = (id, pts, s = 1) => { const h = id === 'headPitch' || id === 'headYaw' || id === 'headRoll' ? HEAD_ACCENT : 1; c[id] = pts.map(([t, v]) => [fast && t < 0 ? t * 0.45 : t, v * s * h]); };
   switch (kind) {
     case 'nod':
       k('headPitch', [[-7, 0], [-3, -0.32], [0, 1], [4, -0.14 * q], [9, 0.04], [14, 0]], 6.5 * A);
@@ -188,7 +188,7 @@ function evalCurve(pts, dt) {
 // Performer: plays timed events, frame by frame.
 // ---------------------------------------------------------------------------------------------------------
 // channel classes: [frequency Hz, damping ratio, delay in frames after a pose event] -> overlapping action
-const DYN = { eye: [3.8, 0.62, 0], brow: [3.3, 0.52, 0], nose: [3.2, 0.6, 1], mouth: [3.0, 0.6, 1], head: [2.0, 0.5, 2], squash: [3.4, 0.36, 1], torso: [1.4, 0.55, 4], pupil: [2.2, 0.8, 0] };
+const DYN = { eye: [4.2, 0.62, 0], brow: [3.7, 0.52, 0], nose: [3.4, 0.6, 1], mouth: [3.3, 0.6, 1], head: [2.0, 0.5, 2], squash: [3.4, 0.36, 1], torso: [1.4, 0.55, 4], pupil: [2.2, 0.8, 0] };
 const CLS = {};
 for (const c of CHANNELS) CLS[c.id] = c.group === 'gaze' ? 'eye' : c.group;
 Object.assign(CLS, { squash: 'squash', pupil: 'pupil', eyeScale: 'eye', AU43: 'eye', AU6: 'eye' });
@@ -196,6 +196,8 @@ const VISEME = ['AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24', 'AU28'];
 // mouth-pose channels that must give way while the mouth is busy talking
 const SPEAK_MUTE = { AU24: 1.0, AU17: 0.8, AU28: 1.0, AU15: 0.3, AU14: 0.4 };
 const BLINK = [0.55, 1.0, 1.0, 0.5, 0.18, 0.04];
+const ANTIC = ['headPitch', 'headRoll', 'headYaw', 'headZ', 'torsoLean', 'torsoY', 'torsoYaw', 'torsoRoll'];
+const HEAD_ROT = ['headPitch', 'headYaw', 'headRoll'];
 
 export class Performer {
   constructor(opts = {}) {
@@ -213,7 +215,7 @@ export class Performer {
     this.breath = this.r() * 6.28; this.drift = new Float32Array(10); this.drift2 = new Float32Array(10);
     this.speakEmo = 'NEU'; this.inten = 0.6;
     this.t = 0;
-    this.out = new Float32Array(K);
+    this.out = new Float32Array(K); this.prevHead = null;
   }
   // ---- events ----
   setPose(pose, t, opts = {}) { // pose: {id: value}; unspecified channels go to 0 unless opts.partial
@@ -224,6 +226,12 @@ export class Performer {
   }
   setActing(emo, inten) { this.act = ACTING[emo] || ACTING.NEU; this.tempo = this.act.tempo; this.zeta = this.act.zeta; this.speakEmo = emo; this.inten = inten; }
   addGesture(t0, curves) { let end = 0; for (const id in curves) end = Math.max(end, curves[id][curves[id].length - 1][0]); this.gest.push({ t0, curves, end }); }
+  // anticipation: head and body go a little the other way from where the next pose will take them (measured from
+  // where they are now), while the face gathers; the pose event that follows overrides all of it
+  anticipate(to, amount = 0.3, face = {}) {
+    for (const id of ANTIC) { const k = IDX[id], d = (to[id] || 0) - this.goal[k]; this.pending.push({ t: this.t + Math.round(DYN[CLS[id]][2] * 0.5), k, v: this.goal[k] - amount * d }); }
+    for (const id in face) { const k = IDX[id]; this.pending.push({ t: this.t, k, v: id === 'squash' ? face[id] : Math.max(this.goal[k], 0) + face[id] }); }
+  }
   blink(dur = 1, amt = 1) { if (this.blinkT < 0) { this.blinkT = 0; this.blinkDur = dur; this.blinkAmt = amt; } }
   lookAt(x, y) { this.gazeGoal = [x, y]; }
   event(ev) {
@@ -233,6 +241,7 @@ export class Performer {
       case 'gest': this.addGesture(ev.hit ?? this.t, ev.curves); break;
       case 'blink': this.blink(ev.dur, ev.amt); break;
       case 'gaze': this.lookAt(ev.x, ev.y); break;
+      case 'antic': this.anticipate(ev.to, ev.amount, ev.face); break;
       default: break;
     }
   }
@@ -281,7 +290,7 @@ export class Performer {
     // ---- lip sync: pose-to-pose mouth, quick to open, a touch slower to close, shaped by the emotion ----
     if (inp.vis) {
       // the mouth only shapes sound while there is speech: between phrases it returns to the pose's own mouth
-      const live = Math.min(1, this.sp * 1.5);
+      const live = inp.mouth !== undefined ? inp.mouth : Math.min(1, this.sp * 1.5);
       const jt = clamp((inp.vis.AU26 || 0) * live, 0, 1.15);
       this.jaw = jt >= this.jaw ? lerp(this.jaw, jt, 0.85) : Math.max(jt, this.jaw - (jt < 0.1 ? 0.34 : 0.17));
       for (const id of VISEME) if (id !== 'AU26') this.vis[id] += ((inp.vis[id] || 0) * live - this.vis[id]) * 0.7;
@@ -310,12 +319,16 @@ export class Performer {
     y[IDX.AU45] = b;
     // ---- limits ----
     // the head saturates softly: stacked poses and accents must never hide the face or break the neck
-    y[IDX.headPitch] = y[IDX.headPitch] > 0 ? soft(y[IDX.headPitch], 9, 15) : -soft(-y[IDX.headPitch], 10, 17);
-    y[IDX.headRoll] = Math.sign(y[IDX.headRoll]) * soft(Math.abs(y[IDX.headRoll]), 11, 17);
-    y[IDX.headYaw] = Math.sign(y[IDX.headYaw]) * soft(Math.abs(y[IDX.headYaw]), 16, 24);
+    // (chin up is limited more than chin down: seen from the front, a big head tipped far back shows mostly chin)
+    y[IDX.headPitch] = y[IDX.headPitch] > 0 ? soft(y[IDX.headPitch], 9, 14) : -soft(-y[IDX.headPitch], 8, 12.5);
+    y[IDX.headRoll] = Math.sign(y[IDX.headRoll]) * soft(Math.abs(y[IDX.headRoll]), 10, 15);
+    y[IDX.headYaw] = Math.sign(y[IDX.headYaw]) * soft(Math.abs(y[IDX.headYaw]), 15, 22);
     y[IDX.torsoLean] = Math.sign(y[IDX.torsoLean]) * soft(Math.abs(y[IDX.torsoLean]), 4.5, 7.5);
     y[IDX.squash] = Math.sign(y[IDX.squash]) * soft(Math.abs(y[IDX.squash]), 0.45, 0.8);
     for (let k = 0; k < K; k++) { const c = CHANNELS[k]; const lo = c.range[0], hi = c.range[1]; y[k] = clamp(y[k], lo < 0 ? lo * 1.3 : 0, hi * (hi === 1 ? 1.25 : 1.3)); }
+    // the head never turns faster than a quick take (about 160 deg/s): when moves stack, the turn spreads over more frames
+    if (!this.prevHead) this.prevHead = HEAD_ROT.map((id) => y[IDX[id]]);
+    HEAD_ROT.forEach((id, i) => { const k = IDX[id], d = y[k] - this.prevHead[i]; y[k] = this.prevHead[i] + Math.sign(d) * soft(Math.abs(d), 2.8, 4.2); this.prevHead[i] = y[k]; });
     this.t++;
     return y;
   }
@@ -351,9 +364,9 @@ export function analyzeSpeech(F, T, aux = null, auxDim = 3) {
       if (!(en[t] >= en[t - 1] && en[t] > en[t + 1]) || en[t] < -1.3) continue;
       let lo = en[t]; for (let j = 1; j <= 6; j++) { if (t - j >= 0) lo = Math.min(lo, en[t - j]); } let lo2 = en[t]; for (let j = 1; j <= 6; j++) { if (t + j < T) lo2 = Math.min(lo2, en[t + j]); }
       const prom = en[t] - Math.max(lo, lo2); if (prom < 0.1) continue;
-      let ah = 0, ab = 0; if (aux) { for (let j = -2; j <= 2; j++) { const u = clamp(t + j, 0, T - 1); ah = Math.max(ah, aux[u * auxDim]); ab = Math.max(ab, aux[u * auxDim + 1]); } }
+      let ah = 0, ab = 0, emph; if (aux) { for (let j = -2; j <= 2; j++) { const u = clamp(t + j, 0, T - 1); ah = Math.max(ah, aux[u * auxDim]); ab = Math.max(ab, aux[u * auxDim + 1]); } emph = emphasisAt(aux, t, T, auxDim); }
       const score = 1.6 * (en[t] - me) + 0.8 * prom + 0.55 * (f0s[t] - mf) + 0.45 * ah + 0.3 * ab;
-      if (nuc.length && t - nuc[nuc.length - 1].t < 3) { if (score > nuc[nuc.length - 1].score) nuc[nuc.length - 1] = { t, score }; } else nuc.push({ t, score });
+      if (nuc.length && t - nuc[nuc.length - 1].t < 3) { if (score > nuc[nuc.length - 1].score) nuc[nuc.length - 1] = { t, score, emph }; } else nuc.push({ t, score, emph });
     }
     ph.nuclei = nuc;
     // question / rising ending: pitch at the end vs. the middle of the phrase
@@ -364,10 +377,29 @@ export function analyzeSpeech(F, T, aux = null, auxDim = 3) {
   return { speech: sp, phrases, en, f0: f0s };
 }
 
+// Emphasis learned from the actors (how strongly a performer's head or brows would move here, in standard deviations
+// of that performer's own motion): the stronger of the head and brow signals around the syllable.
+export const ACCENT_STRONG = 0.8, ACCENT_SOFT = 0.5;
+function emphasisAt(aux, t, T, auxDim = 3) { let v = -9; for (let j = -1; j <= 1; j++) { const u = clamp(t + j, 0, T - 1); v = Math.max(v, aux[u * auxDim], 0.9 * aux[u * auxDim + 1]); } return v; }
+const accentStrength = (emph) => clamp(0.3 + 0.45 * emph, 0.3, 1);
+
 function pickAccents(ph, r) {
+  if (!ph.nuclei.length) return [];
+  const dur = (ph.t1 - ph.t0) / FPS;
+  if (ph.nuclei[0].emph !== undefined) {
+    // Which syllables get a gesture is decided by the learned emphasis, not by loudness alone: a strong accent wherever a
+    // performer would stress, one soft accent in a line that is delivered evenly, none in a flat one. Few, clear accents
+    // with holds between them read as acting; a head that hits every syllable reads as a bobble.
+    const cand = ph.nuclei.slice().sort((a, b) => b.emph - a.emph), max = Math.max(1, Math.round(dur / 0.7)), out = [];
+    for (const n of cand) {
+      if (out.length >= max) break;
+      if (out.some((o) => Math.abs(o.t - n.t) < 12)) continue;
+      if (n.emph >= ACCENT_STRONG || (!out.length && n.emph >= ACCENT_SOFT)) out.push({ t: n.t, strength: accentStrength(n.emph), key: out.length === 0, emph: n.emph });
+    }
+    return out.sort((a, b) => a.t - b.t);
+  }
   const nuc = ph.nuclei.slice().sort((a, b) => b.score - a.score);
-  if (!nuc.length) return [];
-  const dur = (ph.t1 - ph.t0) / FPS, max = Math.max(1, Math.round(dur / 0.55));
+  const max = Math.max(1, Math.round(dur / 0.55));
   const mean = nuc.reduce((s, n) => s + n.score, 0) / nuc.length, sd = Math.sqrt(nuc.reduce((s, n) => s + (n.score - mean) ** 2, 0) / nuc.length) + 0.25;
   const out = [];
   for (const n of nuc) {
@@ -380,9 +412,14 @@ function pickAccents(ph, r) {
 }
 
 // how far key poses and accents are pushed beyond the written values (tuned against the animated-film statistics:
-// head range p95 about 13 / 15 / 9 degrees pitch / yaw / roll, against 5 / 3 / 3 for the seated actors)
-const PUSH = { headPitch: 1.15, headYaw: 1.4, headRoll: 1.3, headZ: 1.2, torso: 1.3 };
+// head range p95 about 13 / 15 / 9 degrees pitch / yaw / roll, against 5 / 3 / 3 for the seated actors).
+// After the third self-evaluation the head was taken back (calibrated on the validation actors only): head moves were
+// about twice as large and half again as fast as in the tracked films. Accents now turn the head 0.8 as far, yaw and
+// roll of the poses are pushed less, a new phrase changes side less often, and the turn rate is limited lower.
+const PUSH = { headPitch: 1.3, headYaw: 1.1, headRoll: 1.15, headZ: 1.2, torso: 1.3 };
 const ACCENT_PUSH = 1.25;
+const HEAD_ACCENT = 0.8;   // head rotation of accent gestures, as a share of the written curves
+const ACCENT_MAX = 1.45;
 function instPose(base, side, inten, prof) {
   const o = {};
   for (const id in base) {
@@ -437,7 +474,10 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
   const glob = new Array(NE).fill(0); { let n = 0; phrases.forEach((ph, i) => { const w = ph.t1 - ph.t0; for (let e = 0; e < NE; e++) glob[e] += post[i][e] * w; n += w; }); for (let e = 0; e < NE; e++) glob[e] /= Math.max(1, n); }
   let prevSide = r() < 0.5 ? -1 : 1, prevVar = -1, prevEmo = -1;
   phrases.forEach((ph, i) => {
-    const p = post[i].map((v, e) => 0.62 * v + 0.19 * (post[i - 1] ? post[i - 1][e] : glob[e]) + 0.19 * (post[i + 1] ? post[i + 1][e] : glob[e]));
+    // neighbouring phrases share their reading, the less the longer the pause between them (a long pause is a new thought)
+    const share = (gap) => 0.19 * clamp(1.4 - gap / 30, 0.25, 1);
+    const wp = phrases[i - 1] ? share(ph.t0 - phrases[i - 1].t1) : 0.1, wn = phrases[i + 1] ? share(phrases[i + 1].t0 - ph.t1) : 0.1;
+    const p = post[i].map((v, e) => (1 - wp - wn) * v + wp * (post[i - 1] ? post[i - 1][e] : glob[e]) + wn * (post[i + 1] ? post[i + 1][e] : glob[e]));
     const order = p.map((v, e) => e).sort((a, b) => p[b] - p[a]), best = order[0], second = order[1];
     const conf = p[best], margin = p[best] - p[second];
     let auxI = 0.5; if (aux) { let s = 0, n = 0; for (let t = ph.t0; t < ph.t1; t++) { s += aux[t * 3 + 2]; n++; } auxI = clamp(s / Math.max(1, n), 0, 1); }
@@ -457,14 +497,14 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
     // a strong, sure reading gets the most open pose of the emotion first
     if (E[ph.emo] !== prevEmo && ph.inten > 0.8 && r() < 0.6) v = 0;
     ph.variant = v; ph.variant2 = ph.emo2 ? Math.floor(r() * POSES[ph.emo2].length) : 0;
-    ph.side = -prevSide * (r() < 0.8 ? 1 : -1); prevSide = ph.side; prevVar = v; prevEmo = E[ph.emo];
+    ph.side = -prevSide * (r() < 0.6 ? 1 : -1); prevSide = ph.side; prevVar = v; prevEmo = E[ph.emo];
     ph.accents = pickAccents(ph, r);
     ph.question = ph.rise > 0.9;
   });
   // ---- how: events ----
   const ev = []; // {t, type, ...}
   const push = (t, e) => ev.push({ t: Math.max(0, Math.round(t)), ...e });
-  let prevEnd = -30, lastBlink = -30;
+  let prevEnd = -30, lastBlink = -30, lastEmo = null;
   const blinkAt = (t, dur, amt = 1) => { if (t - lastBlink >= 10) { push(t, { type: 'blink', dur, amt }); lastBlink = t; return true; } return false; };
   phrases.forEach((ph, i) => {
     const act = ACTING[ph.emo], I = ph.inten, next = phrases[i + 1];
@@ -473,30 +513,35 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
     const full = blend(IDLE, pose, clamp(I * 1.2));
     for (const id in pose) full[id] = pose[id] + (IDLE[id] || 0) * (1 - clamp(I * 1.2));
     ph.pose = full;
-    // the pose lands just before the first word; anticipation precedes it if there is room
+    // the pose is in place before the first word (the springs need a few frames to arrive); anticipation precedes
+    // it if there is room: a short move away from where the head is about to go, and the face gathers before it opens
     const lead = act.lead, tp = Math.max(prevEnd + 3, ph.t0 - lead), room = tp - (prevEnd + 1);
     ph.tp = tp;
     push(tp, { type: 'act', emo: ph.emo, inten: I });
-    if (room >= 4 && ph.emo !== 'SAD') {
-      const a = {}; // opposite of where the face is going, plus a squash
-      for (const id of ['headPitch', 'headRoll', 'headYaw', 'headZ', 'torsoLean', 'torsoY', 'AU1', 'AU2', 'AU4', 'AU5']) if (full[id]) a[id] = -0.28 * full[id];
-      a.squash = (full.squash || 0) >= 0 ? -0.45 * I : 0.3 * I; a.AU7 = 0.25 * I; a.AU6 = 0.15 * I;
-      push(tp - 4, { type: 'pose', pose: a, partial: true, stagger: 0.5 });
+    const ant = ph.emo === 'SAD' ? 0 : room >= 10 ? 6 : room >= 6 ? 4 : 0;
+    if (ant) {
+      const opens = (full.AU5 || 0) + (full.eyeScale || 0) > 0.3 || (full.AU1 || 0) + (full.AU2 || 0) > 0.6, closes = (full.AU4 || 0) > 0.5;
+      const face = opens ? { AU7: 0.35 * I, AU6: 0.2 * I, AU4: 0.15 * I } : closes ? { AU5: 0.2 * I, AU1: 0.12 * I, AU2: 0.2 * I } : { AU7: 0.2 * I, AU6: 0.12 * I };
+      face.squash = (full.squash || 0) >= 0 && (full.headPitch || 0) <= 2 ? -0.45 * I : 0.3 * I;
+      push(tp - ant, { type: 'antic', to: full, amount: ant >= 6 ? 0.34 : 0.24, face });
     }
-    if (ph.emo !== 'FEA' || r() < 0.4) blinkAt(tp - 2, act.blinkDur);
-    push(tp - 3, { type: 'gaze', x: full.gazeX ? 0 : 0, y: 0 });
+    // a blink covers a change of feeling; a line that continues the same feeling starts with open eyes more often
+    if (r() < (ph.emo === 'FEA' ? 0.3 : ph.emo !== lastEmo ? 0.85 : 0.35)) blinkAt(tp - 2, act.blinkDur);
+    lastEmo = ph.emo;
+    push(tp - 3, { type: 'gaze', x: 0, y: 0 });
     push(tp, { type: 'pose', pose: full });
     // accents (the hit lands 2 frames before the stressed syllable)
     let side = ph.side, ai = Math.floor(r() * act.accents.length);
     const L = ph.t1 - ph.t0;
     for (const a of ph.accents) {
       const kind = a.key && ph.question ? 'up' : act.accents[ai % act.accents.length]; ai++;
-      const A = Math.min(1.7, ACCENT_PUSH * act.amp * (0.5 + 0.7 * a.strength) * (0.55 + 0.6 * I) * prof.energy * (a.key ? 1.3 : 1)) * exaggeration;
+      const A = Math.min(ACCENT_MAX, ACCENT_PUSH * act.amp * (0.5 + 0.7 * a.strength) * (0.55 + 0.6 * I) * prof.energy * (a.key ? 1.3 : 1)) * exaggeration;
       const hit = a.t - 2;
-      if (hit < tp + 3 && !a.key) continue;
+      // while the key pose is still arriving, the arrival is the accent: a second move on top of it only blurs both
+      if (hit < tp + 9) { a.kind = 'pose'; a.amp = 0; continue; }
       push(Math.max(0, hit - 12), { type: 'gest', hit, curves: gesture(kind, A, side, a.key, prof) });
       a.kind = kind; a.amp = A;
-      if (a.key && r() < 0.4 && hit - 7 > tp + 4) blinkAt(hit - 7, act.blinkDur * 0.9);
+      if (a.key && r() < 0.25 && hit - 7 > tp + 4) blinkAt(hit - 7, act.blinkDur * 0.9);
       side = -side;
     }
     // a long phrase gets a second attitude (weight shift) after its key accent or at its middle
@@ -506,7 +551,7 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
       const shift = {}; for (const id in alt) { const g = CHANNELS[IDX[id]].group; if (g === 'head' || g === 'torso' || id === 'browAsym' || id === 'mouthAsym') shift[id] = alt[id]; }
       for (const id in full) { const g = CHANNELS[IDX[id]].group; if ((g === 'head' || g === 'torso' || id === 'browAsym' || id === 'mouthAsym') && !(id in shift)) shift[id] = 0; }
       push(ts, { type: 'pose', pose: shift, partial: true });
-      if (r() < 0.6) blinkAt(ts - 1, act.blinkDur);
+      if (r() < 0.4) blinkAt(ts - 1, act.blinkDur);
     }
     // rising ending: brows go up and stay there while the head tilts in (asking)
     if (ph.question) { const q = { AU1: (full.AU1 || 0) + 0.3 * I, AU2: (full.AU2 || 0) + 0.45 * I, headRoll: (full.headRoll || 0) + 5 * ph.side * prof.tilt, headPitch: (full.headPitch || 0) - 3, AU5: (full.AU5 || 0) + 0.15 }; push(ph.t1 - 9, { type: 'pose', pose: q, partial: true }); }
@@ -515,8 +560,8 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
     const te = ph.t1 + 5;
     if (next) {
       push(te, { type: 'pose', pose: scalePose(full, act.relax, null) });
-      if (r() < 0.7) blinkAt(ph.t1 + 3 + Math.floor(r() * 3), act.blinkDur);
-      if (pause > 26) {
+      if (r() < 0.4) blinkAt(ph.t1 + 3 + Math.floor(r() * 3), act.blinkDur);
+      if (pause > 44) { // long enough to look away and be back before the next line is prepared
         const look = act.look, s = r() < 0.5 ? -1 : 1, tl = ph.t1 + 9 + Math.floor(r() * 5);
         if (look === 'think') push(tl, { type: 'gaze', x: 0.45 * s, y: 0.4 });
         else if (look === 'glance') push(tl, { type: 'gaze', x: 0.4 * s, y: 0.15 });
@@ -528,7 +573,7 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
     } else {
       // last phrase: hold the feeling for a beat, then come back to rest
       push(te, { type: 'pose', pose: scalePose(full, act.relax) });
-      if (r() < 0.8) blinkAt(ph.t1 + 4, act.blinkDur);
+      if (r() < 0.6) blinkAt(ph.t1 + 4, act.blinkDur);
       push(ph.t1 + 26, { type: 'act', emo: 'NEU', inten: 0.5 });
       push(ph.t1 + 26, { type: 'pose', pose: { ...IDLE } });
       push(ph.t1 + 24, { type: 'gaze', x: 0, y: 0 });
@@ -538,7 +583,7 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
   // ordinary blinks in the gaps the punctuation left
   { let t = 8 + Math.floor(r() * 30); const blinks = ev.filter((e) => e.type === 'blink').map((e) => e.t).sort((a, b) => a - b);
     while (t < T) { const ph = phrases.find((p) => t >= p.tp && t < p.t1 + 20); const act = ACTING[ph ? ph.emo : 'NEU'];
-      if (!blinks.some((b) => Math.abs(b - t) < act.blink * FPS * 0.45)) { push(t, { type: 'blink', dur: act.blinkDur, amt: 1 }); blinks.push(t); if (r() < 0.12) push(t + 8, { type: 'blink', dur: act.blinkDur * 0.8, amt: 1 }); }
+      if (!blinks.some((b) => Math.abs(b - t) < act.blink * FPS * 0.45)) { push(t, { type: 'blink', dur: act.blinkDur, amt: 1 }); blinks.push(t); if (r() < 0.08) push(t + 8, { type: 'blink', dur: act.blinkDur * 0.8, amt: 1 }); }
       t += Math.round(act.blink * FPS * (0.6 + 0.8 * r())); } }
   ev.sort((a, b) => a.t - b.t);
   // ---- per-frame inputs: visemes (smoothed), pitch-riding brows, a trace of the learned head motion ----
@@ -557,13 +602,17 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
   }
   // smooth the pitch-riding so brows glide, not flicker
   for (let pass = 0; pass < 2; pass++) for (let t = 1; t < T; t++) browF0[t] = 0.6 * browF0[t - 1] + 0.4 * browF0[t];
+  // the mouth shapes sound from 4 frames before a phrase (lips part ahead of the voice) to 3 frames after it
+  const gate0 = new Float32Array(T), gate = new Float32Array(T);
+  for (let t = 0; t < T; t++) if (an.speech[t]) gate0.fill(1, Math.max(0, t - 4), Math.min(T, t + 4));
+  for (let t = 0; t < T; t++) gate[t] = 0.25 * gate0[Math.max(0, t - 1)] + 0.5 * gate0[t] + 0.25 * gate0[Math.min(T - 1, t + 1)];
   // ---- perform ----
   const perf = new Performer({ seed, profile: prof });
   const track = new Float32Array(T * K), emo = new Float32Array(T * NE);
   let ei = 0;
   for (let t = 0; t < T; t++) {
     while (ei < ev.length && ev[ei].t <= t) perf.event(ev[ei++]);
-    const y = perf.step({ speaking: an.speech[t], vis: vis[t], browF0: browF0[t], tex: [tex[t * 3], tex[t * 3 + 1], tex[t * 3 + 2]] });
+    const y = perf.step({ speaking: an.speech[t], mouth: gate[t], vis: vis[t], browF0: browF0[t], tex: [tex[t * 3], tex[t * 3 + 1], tex[t * 3 + 2]] });
     track.set(y, t * K);
     const ph = phrases.find((p) => t >= p.tp && t < p.t1 + 12);
     if (ph) for (let e = 0; e < NE; e++) emo[t * NE + e] = ph.p[e]; else emo[t * NE] = 1;
@@ -581,11 +630,15 @@ export class LiveDirector {
     this.meta = meta; this.seed = opts.seed ?? 7; this.r = rng(this.seed ^ 0x51ed);
     this.prof = { ...DEFAULT_PROFILE, ...(opts.profile || {}) };
     this.exaggeration = opts.exaggeration ?? 1;
+    // how much more likely a new reading must be than the feeling being played before the pose follows it
+    // (at the first re-reading after 8 speech frames, and at the later ones); set on the validation speakers
+    this.switchMargins = opts.switchMargins || [0.03, 0.08];
     this.perf = new Performer({ seed: this.seed, profile: this.prof });
     this.NE = EMOS.length;
     this.t = 0; this.sil = 99; this.inPhrase = false; this.phraseT = 0;
     this.ctx = new Float32Array(this.NE).fill(1 / this.NE); // slow context of the conversation
     this.acc = new Float32Array(this.NE); this.accN = 0;     // evidence inside the current phrase
+    this.recent = new Float32Array(this.NE).fill(1 / this.NE); // the network's latest answer, lightly smoothed
     this.emo = 'NEU'; this.inten = 0.6; this.side = 1; this.variant = 0; this.pose = { ...IDLE };
     this.eMean = 0; this.fMean = 0; this.eN = 0;
     this.scoreMean = 0.4; this.scoreVar = 0.3; this.lastAccent = -99; this.lastKey = -99; this.accentIdx = 0;
@@ -595,7 +648,17 @@ export class LiveDirector {
   }
   setProfile(profile) { this.prof = { ...DEFAULT_PROFILE, ...(profile || {}) }; this.perf.prof = this.prof; }
   _blink(dur) { if (this.autoBlink) this.perf.blink(dur); }
-  emoDisplay() { const p = Array.from(this.accN > 3 ? this.acc : this.ctx); const s = p.reduce((a, b) => a + b, 0) || 1; return p.map((v) => v / s); }
+  emoDisplay() { const p = Array.from(this.accN > 3 ? this.recent : this.ctx); const s = p.reduce((a, b) => a + b, 0) || 1; return p.map((v) => v / s); }
+  // the feeling of the line as far as it has been heard: the causal network's latest answer (it already sums up what
+  // it heard), with a little of the conversation's context
+  _reread() {
+    const p = new Array(this.NE); let s = 0;
+    for (let e = 0; e < this.NE; e++) { p[e] = 0.85 * this.recent[e] + 0.15 * this.ctx[e]; s += p[e]; }
+    for (let e = 0; e < this.NE; e++) p[e] /= s;
+    let best = 0; for (let e = 1; e < this.NE; e++) if (p[e] > p[best]) best = e;
+    const sorted = p.slice().sort((a, b) => b - a);
+    return { emo: EMOS[best], p, conf: sorted[0], margin: sorted[0] - sorted[1] };
+  }
   _decide() {
     const p = new Array(this.NE); let s = 0;
     for (let e = 0; e < this.NE; e++) { p[e] = (this.acc[e] + 4 * this.ctx[e]) / (this.accN + 4); s += p[e]; }
@@ -631,13 +694,15 @@ export class LiveDirector {
     if (voiced) this.sil = 0; else this.sil++;
     if (this.inPhrase) {
       this.phraseT++;
-      if (voiced) { for (let e = 0; e < this.NE; e++) this.acc[e] += p[e]; this.accN++; this.eMean += (feat[0] - this.eMean) / (++this.eN); if (feat[1] > 0.5) this.fMean += (feat[2] - this.fMean) / Math.max(1, this.eN); if (aux) { this.auxI += (clamp(aux[2], 0, 1) - this.auxI) / (++this.auxN); } }
-      // re-read the feeling once enough of the phrase has been heard; later only on clear evidence
-      if (this.accN === 10 || (this.accN > 10 && this.accN % 18 === 0)) {
-        const d = this._decide(), cur = d.p[E[this.emo]];
+      if (voiced) { for (let e = 0; e < this.NE; e++) { this.acc[e] += p[e]; this.recent[e] += (this.accN ? 0.15 : 1) * (p[e] - this.recent[e]); } this.accN++; this.eMean += (feat[0] - this.eMean) / (++this.eN); if (feat[1] > 0.5) this.fMean += (feat[2] - this.fMean) / Math.max(1, this.eN); if (aux) { this.auxI += (clamp(aux[2], 0, 1) - this.auxI) / (++this.auxN); } }
+      // Nothing is known about a line before it is spoken, and the network knows more with every syllable (on unseen
+      // speakers about 45% right after 0.3 s, 57% after 1 s, 63% by the end of the line). So the first pose is a guess
+      // from the context, and the reading is taken again at short intervals; the pose follows once it clearly differs.
+      if (voiced && (this.accN === 8 || this.accN === 16 || (this.accN > 16 && (this.accN - 16) % 12 === 0))) {
+        const d = this._reread(), cur = d.p[E[this.emo]];
         const inten = clamp((0.5 + 0.4 * this.auxI + 0.25 * (clamp(0.5 + 0.35 * this.eMean, 0, 1) - 0.5)) * clamp(0.55 + 0.9 * d.margin + 0.35 * d.conf, 0.55, 1), 0.35, 1.05) * this.exaggeration;
-        if (d.emo !== this.emo && d.conf - cur > (this.accN === 10 ? 0.1 : 0.2)) { this._blink(ACTING[d.emo].blinkDur); this._pose(d.emo, inten); }
-        else if (this.accN === 10) this._pose(this.emo, inten);
+        if (d.emo !== this.emo && d.conf - cur > this.switchMargins[this.accN === 8 ? 0 : 1]) { this._blink(ACTING[d.emo].blinkDur); this._pose(d.emo, inten); }
+        else if (this.accN === 8) this._pose(this.emo, inten);
       }
       if (this.sil === 6) { // the phrase is over: settle, blink
         this.inPhrase = false;
@@ -662,10 +727,13 @@ export class LiveDirector {
         const score = 1.6 * (e1 - this.eMean) + 0.55 * (ahead[1][2] - this.fMean) + (aux ? 0.45 * aux[0] + 0.3 * aux[1] : 0);
         const sd = Math.sqrt(this.scoreVar) + 0.25, z = (score - this.scoreMean) / sd;
         this.scoreMean += 0.08 * (score - this.scoreMean); this.scoreVar += 0.08 * ((score - this.scoreMean) ** 2 - this.scoreVar);
-        if (z > -0.1 && t - this.lastAccent >= 11 && this.phraseT > 3) {
-          const act = ACTING[this.emo], strength = clamp(0.55 + 0.25 * z, 0.25, 1);
+        // the learned emphasis decides (as offline); a soft accent only when nothing has been stressed for a while
+        const emph = aux ? Math.max(aux[0], 0.9 * aux[1]) : null;
+        const go = emph === null ? z > -0.1 : emph >= ACCENT_STRONG || (emph >= ACCENT_SOFT && t - this.lastAccent > 40);
+        if (go && t - this.lastAccent >= 12 && this.phraseT > 3) {
+          const act = ACTING[this.emo], strength = emph === null ? clamp(0.55 + 0.25 * z, 0.25, 1) : accentStrength(emph);
           const key = strength > 0.75 && t - this.lastKey > 45;
-          const A = Math.min(1.7, ACCENT_PUSH * act.amp * (0.5 + 0.7 * strength) * (0.55 + 0.6 * this.inten) * this.prof.energy * (key ? 1.3 : 1)) * this.exaggeration;
+          const A = Math.min(ACCENT_MAX, ACCENT_PUSH * act.amp * (0.5 + 0.7 * strength) * (0.55 + 0.6 * this.inten) * this.prof.energy * (key ? 1.3 : 1)) * this.exaggeration;
           const kind = act.accents[this.accentIdx++ % act.accents.length];
           perf.addGesture(perf.t + 3, gesture(kind, A, (this.accentIdx % 2 ? 1 : -1) * this.side, key, this.prof, true));
           this.lastAccent = t; if (key) this.lastKey = t;
@@ -681,6 +749,9 @@ export class LiveDirector {
     const target = this.inPhrase && feat[1] > 0.5 ? clamp(feat[2] - this.fMean, -0.8, 1.8) * 0.085 * this.inten : 0;
     this.browF0 += (target - this.browF0) * 0.3;
     this.t++;
-    return perf.step({ speaking: voiced, vis, browF0: this.browF0 });
+    // a camera sees the mouth itself, so its shape is shown whether or not the microphone hears a voice;
+    // the mouth made from the voice alone is only shown while there is speech
+    const inp = { speaking: voiced, vis, browF0: this.browF0 }; if (camVis) inp.mouth = 1;
+    return perf.step(inp);
   }
 }

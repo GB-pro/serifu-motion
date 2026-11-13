@@ -21,7 +21,9 @@ const open = await p.evaluate(() => document.getElementById('emoDlg').open);
 console.log('dialog open after click:', open, 'phrase was', pos.before);
 if (open) {
   await p.click('#emoChoices button[data-emo="SAD"]'); await p.screenshot({ path: out + '_2.png' });
-  await p.click('#emoDlg button[value="apply"]'); await p.waitForTimeout(400);
+  await p.click('#emoDlg button[value="apply"]');
+  // the page can be busy drawing for a while (software rendering): wait for the change itself, not for a fixed time
+  await p.waitForFunction(() => app.project.speakers[0].plan.phrases.some((q) => q.fixed), null, { timeout: 15000 }).catch(() => console.log('OVERRIDE NOT APPLIED within 15 s'));
   console.log('after override:', JSON.stringify(await p.evaluate(() => app.project.speakers[0].plan.phrases.map(q => q.emo + (q.fixed ? '*' : '')))));
 }
 // style switch and expressiveness, undo

@@ -44,9 +44,11 @@ export class LiveSession {
   }
   async _loadFace() {
     try {
-      const { FilesetResolver, FaceLandmarker } = await import(this.base + 'vendor/mediapipe/vision_bundle.mjs');
-      const fs = await FilesetResolver.forVisionTasks(this.base + 'vendor/mediapipe/wasm');
-      const opts = (delegate) => ({ baseOptions: { modelAssetPath: this.base + 'models/face_landmarker.task', delegate }, runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true });
+      // paths are resolved against the page: a dynamic import would otherwise be resolved against this file's folder
+      const abs = (p) => new URL(this.base + p, document.baseURI).href;
+      const { FilesetResolver, FaceLandmarker } = await import(abs('vendor/mediapipe/vision_bundle.mjs'));
+      const fs = await FilesetResolver.forVisionTasks(abs('vendor/mediapipe/wasm'));
+      const opts = (delegate) => ({ baseOptions: { modelAssetPath: abs('models/face_landmarker.task'), delegate }, runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true });
       try { this.cam = await FaceLandmarker.createFromOptions(fs, opts('GPU')); } catch (e) { this.cam = await FaceLandmarker.createFromOptions(fs, opts('CPU')); }
       this.onStatus('cam-ready');
     } catch (e) { console.warn('face landmarker unavailable', e); this.onStatus('cam-failed'); }

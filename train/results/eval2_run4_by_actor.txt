@@ -1,0 +1,11 @@
+criterion                                       1083    1084    1085    1086    1087    1088    1089    1090    1091   pass
+R reading accuracy                             0.659   0.683   0.646   0.707   0.537   0.646   0.817   0.707   0.537   7/9
+T lip sync r                                   0.608   0.633   0.658   0.720   0.681   0.524   0.516   0.493   0.685   8/9
+T accent lift                                  1.274   1.721   1.765   1.397   1.848   1.544   1.531   1.270   1.674   6/9
+L legibility vs actor                          0.946   0.965   1.395   0.966   1.021   0.754   1.066   1.341   0.958   4/9
+S closer to films (share)                      0.857   0.714   0.857   0.714   0.571   0.857   0.857   0.714   0.857   8/9
+S over-acting guard (max ratio to films)       1.812   1.731   2.019   1.664   1.924   1.849   1.990   1.831   1.768   8/9
+A jaw closed in silence                        0.996   0.998   0.999   1.000   1.000   0.994   0.996   0.999   0.999   9/9
+A max head step                                4.199   4.200   4.200   4.200   4.181   4.200   4.200   4.200   4.200   9/9
+all eight met by: [1089]
+(each actor measured alone, 82 lines each; legibility standardised per actor)

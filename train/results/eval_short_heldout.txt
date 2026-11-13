@@ -1,0 +1,18 @@
+1083 done
+1084 done
+1085 done
+1086 done
+1087 done
+1088 done
+1089 done
+1090 done
+1091 done
+all 82 lines of the speaker (as in the main evaluation)    0.660 n 738   NEU 0.54  HAP 0.56  SAD 0.60  ANG 0.87  FEA 0.79  DIS 0.58
+about 6 lines, one per emotion                             0.650 n 738   NEU 0.45  HAP 0.60  SAD 0.52  ANG 0.94  FEA 0.77  DIS 0.60
+3 lines                                                    0.550 n 738   NEU 0.33  HAP 0.63  SAD 0.20  ANG 0.78  FEA 0.72  DIS 0.61
+1 line on its own                                          0.431 n 738   NEU 0.35  HAP 0.70  SAD 0.00  ANG 0.33  FEA 0.62  DIS 0.57
+about 13 lines, all in the same emotion                    0.408 n 738   NEU 0.31  HAP 0.56  SAD 0.02  ANG 0.26  FEA 0.75  DIS 0.53
+
+real	7m35.203s
+user	7m28.507s
+sys	0m0.475s

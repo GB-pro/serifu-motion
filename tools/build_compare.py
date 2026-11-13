@@ -1,4 +1,5 @@
-"""Build the comparison video (actor | linear | animation layer) for held-out CREMA-D actors.
+"""Build the comparison video (recorded actor | the actor's face transferred linearly | animation layer driven by the voice
+alone) for held-out CREMA-D actors.
 python tools/build_compare.py <workDir> <out.mp4> [steps=gen,render,compose,join] [models=comma list]
 The lines are chosen by a fixed rule (no hand picking): each of four held-out actors says six different sentences, one per emotion.
 """
@@ -21,11 +22,12 @@ for j, (actor, avatar) in enumerate(TAKES):
     name = f'take_{actor}_{avatar}'; names.append(name)
     if 'gen' in steps:
         subprocess.run(['node', os.path.join(ROOT, 'tools', 'make_compare.mjs'), models, os.path.join(DATA, 'feat'), work, name, avatar, ','.join(clips)], check=True)
+        subprocess.run([sys.executable, os.path.join(ROOT, 'tools', 'actor_take.py'), os.path.join(work, name + '.json'), os.path.join(DATA, 'feat'), models.split(',')[0]], check=True)
 if 'render' in steps:
     jobs = []
     for name in names:
         tk = json.load(open(os.path.join(work, name + '.json')))
-        for kind in ['linear', 'auto', 'fix']:
+        for kind in ['actor', 'auto', 'fix']:
             if kind == 'fix' and all(c['ok'] for c in tk['clips']): continue
             job = {'avatars': [tk['avatar']], 'tracks': [os.path.join(work, f'{name}.{kind}.f32')], 'framesDir': os.path.join(work, 'frames', f'{name}.{kind}')}
             if kind == 'fix': job['ranges'] = [[max(0, c['f0'] - 6), min(tk['T'], c['f1'] + 14)] for c in tk['clips'] if not c['ok']]

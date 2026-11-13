@@ -191,7 +191,9 @@ export class LiveEmo {
       const logits = Array.from(o.subarray(KM, KM + NE)), p = softmax(logits);
       for (let e = 0; e < NE; e++) this.emo[e] = this.emo[e] * 0.97 + p[e] * 0.03;
       let y;
-      if (this.style === 'natural' || !fa) { const yy = Float32Array.from(reg); this.pp.frame(yy, v); y = linearToRig(yy, meta); }
+      if (this.style === 'natural') { const yy = Float32Array.from(reg); this.pp.frame(yy, v); y = linearToRig(yy, meta); }
+      // until the look-ahead buffer has filled (the first few frames of a session) the character simply rests
+      else if (!fa) y = Float32Array.from(this.dir.perf.step({ speaking: 0 }));
       else y = Float32Array.from(this.dir.step({ feat: fa, ahead: this.lastFeat, reg, p, aux: NA ? o.subarray(KM + NE, KM + NE + NA) : null, voiced: v, camVis }));
       out.push({ y, emo: this.style === 'natural' ? Array.from(this.emo) : this.dir.emoDisplay(), voiced: v });
     }
