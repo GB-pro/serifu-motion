@@ -54,3 +54,22 @@ How to read it:
   trained without the fresh speakers), and lip sync from 0.61 to 0.59.
 - Every speaker of CREMA-D has now been used for training, tuning or a check. A further clean check needs speakers
   from outside this corpus.
+
+## Check on Japanese speech: fixed before any Japanese audio was measured (2026-11-14, 07:25 JST)
+
+Nothing Japanese has been used for training or tuning, and no Japanese audio has been run through the networks so far.
+
+- Material: 声優統計コーパス (voice-statistics.github.io). Three professional voice actresses read 100 phoneme-balanced
+  sentences each in three ways: normal, happy, angry. The audio may be used for analysis only and may not be
+  redistributed, so only numbers are reported: no audio and no features of it go into this repository or the app.
+- Networks and app code: as frozen for iteration 5 (commit 062641a). Nothing is changed for this check.
+- Sessions: the 100 sentences of each actress in four blocks of 25 (sentences 1 to 25, 26 to 50, 51 to 75, 76 to 100),
+  which gives 12 sessions of 75 lines, 25 per emotion. "normal" counts as NEU.
+- Measures: `eval_short.mjs` and `eval_live.mjs`, as for the targets above. The reading is over all six classes, so
+  chance is 1 in 6, and SAD, FEA and DIS are possible wrong answers.
+- Marks, the same numbers as the English targets: a single line at least 55 %; a recording of 25 lines in one emotion
+  at least 55 %; a long recording (the 75 lines of a session) at least 64 %; live, played at the end of the line, at
+  least 55 %.
+- For reference, English on the same three emotions (NEU, HAP, ANG): fresh speakers 74 %, 69 %, 81 %, 67 %; held-out
+  set 1: 55 %, 52 %, 65 %, 51 % (single line, one emotion, long, live).
+- Limits known in advance: three speakers, all female, read sentences, three of the six emotions.
