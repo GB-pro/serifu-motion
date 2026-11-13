@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Serifu Motion</title>
+<meta name="description" content="Speech-driven FACS emo generation for stylized avatars">
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+<header class="bar">
+  <div class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 32 32" width="26" height="26"><circle cx="16" cy="16" r="15" fill="var(--accent)"/><circle cx="11" cy="13" r="2.6" fill="#fff"/><circle cx="21" cy="13" r="2.6" fill="#fff"/><path d="M9 19 q7 7 14 0" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round"/></svg></span>
+    <div><b>Serifu Motion</b><small data-i18n="tagline"></small></div></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="studio" class="on" data-i18n="studio"></button>
+    <button role="tab" data-tab="live" data-i18n="live"></button>
+  </nav>
+  <select id="lang" aria-label="Language"></select>
+</header>
+
+<main>
+<section id="studio" class="view">
+  <div class="top">
+    <div class="stagewrap">
+      <div id="stage" class="stage"></div>
+      <div class="transport">
+        <button id="play" class="round" aria-label="play">▶</button>
+        <span id="clock">0:00.0</span>
+        <div class="spacer"></div>
+        <div class="menu"><button id="exportBtn" class="ghost" data-i18n="export"></button>
+          <div class="menu-pop" id="exportMenu" hidden>
+            <button data-exp="json" data-i18n="exportJson"></button>
+            <button data-exp="csv" data-i18n="exportCsv"></button>
+            <button data-exp="video" data-i18n="exportVideo"></button>
+            <button data-exp="project" data-i18n="saveProject"></button>
+          </div></div>
+      </div>
+    </div>
+    <aside class="panel" id="panel">
+      <div class="row wrap">
+        <label class="btn primary"><input type="file" id="fileSep" accept="audio/*,video/*" multiple hidden><span data-i18n="addAudio"></span></label>
+      </div>
+      <div class="row wrap">
+        <label class="btn"><input type="file" id="fileMix" accept="audio/*,video/*" hidden><span data-i18n="addMixed"></span></label>
+        <label class="mini"><span data-i18n="numSpeakers"></span> <select id="nSpk"><option>2</option><option>3</option><option>4</option></select></label>
+      </div>
+      <div class="row wrap">
+        <button class="btn" id="demoBtn" data-i18n="demo"></button>
+        <label class="btn ghost"><input type="file" id="fileProj" accept=".json,application/json" hidden><span data-i18n="importJson"></span></label>
+      </div>
+      <h3 data-i18n="speakers"></h3>
+      <div id="spList"></div>
+      <div id="spDetail"></div>
+      <p class="model" id="modelInfo"></p>
+    </aside>
+  </div>
+  <div class="tlbar">
+    <button class="ghost" id="undo" data-i18n="undo"></button>
+    <button class="ghost" id="redo" data-i18n="redo"></button>
+    <span class="sep"></span>
+    <button class="ghost" id="zout" aria-label="zoom out">−</button><button class="ghost" id="zin" aria-label="zoom in">＋</button>
+    <span class="hint" data-i18n="editHint"></span>
+  </div>
+  <div id="timeline" class="timeline"></div>
+</section>
+
+<section id="live" class="view" hidden>
+  <div class="livewrap">
+    <div id="liveStage" class="stage"></div>
+    <video id="camPreview" playsinline muted></video>
+    <div class="liveHud">
+      <div id="emoMeter" class="emometer"></div>
+      <div id="faceStatus" class="pill"></div>
+      <div id="recBadge" class="pill rec" hidden></div>
+    </div>
+  </div>
+  <div class="liveCtl">
+    <label class="mini"><span data-i18n="avatar"></span> <select id="liveAvatar"></select></label>
+    <button class="btn primary" id="liveStart" data-i18n="startLive"></button>
+    <button class="btn" id="liveRec" data-i18n="record" disabled></button>
+    <label class="mini"><input type="checkbox" id="camMouth" checked> <span data-i18n="camMouth"></span></label>
+    <label class="mini"><input type="checkbox" id="camBlink" checked> <span data-i18n="camBlink"></span></label>
+    <p class="note" data-i18n="liveNote"></p>
+  </div>
+</section>
+</main>
+
+<dialog id="emoDlg">
+  <form method="dialog">
+    <h3 data-i18n="setEmotion"></h3>
+    <p id="emoRange" class="dim"></p>
+    <div id="emoChoices" class="emochoices"></div>
+    <label class="mini"><span data-i18n="intensity"></span> <input type="range" id="emoInt" min="0.1" max="1.5" step="0.05" value="0.8"> <output id="emoIntV"></output></label>
+    <div class="row end">
+      <button value="remove" class="ghost danger" id="emoRemove" data-i18n="remove"></button>
+      <button value="cancel" class="ghost" data-i18n="cancel"></button>
+      <button value="apply" class="btn primary" data-i18n="apply"></button>
+    </div>
+  </form>
+</dialog>
+<div id="busy" hidden><div class="spinner"></div><span id="busyText"></span></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

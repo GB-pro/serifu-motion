@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#222}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from './vendor/addons/RoomEnvironment.js';
+import { DESIGNS, createCharacter } from './avatar/characters.js';
+const q = new URLSearchParams(location.search);
+const W = +(q.get('w')||1200), H = +(q.get('h')||700);
+const r = new THREE.WebGLRenderer({ antialias: true, stencil: true, preserveDrawingBuffer: true });
+r.setSize(W, H); r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#cfe3ef');
+const pm = new THREE.PMREMGenerator(r); scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.add(new THREE.HemisphereLight('#ffffff', '#b0a090', 0.6));
+const key = new THREE.DirectionalLight('#fff3e6', 1.6); key.position.set(2, 3, 4); scene.add(key);
+const rim = new THREE.DirectionalLight('#cfe6ff', 1.0); rim.position.set(-3, 2, -3); scene.add(rim);
+const keys = (q.get('c') || 'hana,kenta,moku,mimi').split(',');
+const exprs = JSON.parse(q.get('e') || '[{}]');
+const chars = [];
+const n = keys.length * exprs.length; let i = 0;
+for (const e of exprs) for (const k of keys) {
+  const c = createCharacter(k); c.root.position.x = (i - (n - 1) / 2) * 2.6; c.apply(e); scene.add(c.root); chars.push(c); i++;
+}
+const cam = new THREE.PerspectiveCamera(q.get('fov')?+q.get('fov'):30, W / H, 0.1, 100);
+const fov = cam.fov * Math.PI / 180; const z = +(q.get('z') || Math.max((n * 2.6) / 2 / Math.tan(fov / 2) / (W / H), +(q.get('hh')||3) / 2 / Math.tan(fov / 2)) + 0.5);
+cam.position.set(0, +(q.get('y')||1.4), z); cam.lookAt(0, +(q.get('ly')||1.2), 0);
+r.render(scene, cam); window.READY = true;
+</script></body></html>
