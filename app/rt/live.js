@@ -1,20 +1,22 @@
 // Serifu Motion — realtime: mic drives expression/head/torso through the causal model,
 // camera (MediaPipe Face Landmarker) drives ONLY blinks and mouth shape.
 import { LiveEmo } from '../core/generator.js';
+import { visemesFromCamera } from '../core/animate.js';
 import { K, IDX, IDS, blendshapesToAU } from '../core/au.js';
 
 const WORKLET = `class Tap extends AudioWorkletProcessor{process(i){const c=i[0];if(c&&c[0])this.port.postMessage(c[0].slice(0));return true}}registerProcessor('sm-tap',Tap);`;
 const CAM_MOUTH = ['AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24', 'AU28'];
 
 export class LiveSession {
-  constructor({ rtModel, onFrame, onStatus, video, base = './' }) {
+  constructor({ rtModel, onFrame, onStatus, video, base = './', profile = null, style = 'anime' }) {
     this.rtModel = rtModel; this.onFrame = onFrame; this.onStatus = onStatus || (() => {});
+    this.profile = profile; this.style = style;
     this.video = video; this.base = base;
     this.useCamMouth = true; this.useCamBlink = true;
     this.queue = []; this.cam = null; this.faceSeen = false; this.recording = null;
   }
   async start() {
-    this.emo = new LiveEmo(this.rtModel, { seed: Date.now() & 0xffff });
+    this.emo = new LiveEmo(this.rtModel, { seed: Date.now() & 0xffff, profile: this.profile, style: this.style });
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
@@ -58,16 +60,24 @@ export class LiveSession {
     }
     const x = Float32Array.from(out);
     if (this.recording) this.recording.audio.push(x);
-    for (const f of this.emo.push(x)) {
+    // The camera gives two things only: the mouth shape and the blink. In the anime style the mouth shape goes INTO
+    // the performer (so the emotion still shapes the lips and accents still open the jaw); the blink replaces the
+    // performer's own blinks while a face is visible.
+    const au = this.faceSeen ? this.camAU : null;
+    const camVis = au && this.useCamMouth ? visemesFromCamera(au, this.emo.meta, this._vis || (this._vis = {})) : null;
+    this.emo.setAutoBlink(!(au && this.useCamBlink));
+    for (const f of this.emo.push(x, camVis)) {
       this.queue.push(f);
       if (this.recording) { this.recording.frames.push(this._compose(f.y)); this.recording.emo.push(f.emo.slice()); }
     }
   }
+  setProfile(profile) { this.profile = profile; if (this.emo) this.emo.setProfile(profile); }
+  setStyle(style) { this.style = style; if (this.emo) this.emo.setStyle(style); }
   _compose(src) {
     const y = Float32Array.from(src), au = this.faceSeen ? this.camAU : null;
     if (au) {
-      if (this.useCamBlink) y[IDX.AU45] = Math.min(1, Math.max(0, (au.AU45 - 0.15) / 0.5));
-      if (this.useCamMouth) for (const id of CAM_MOUTH) y[IDX[id]] = au[id];
+      if (this.useCamBlink) y[IDX.AU45] = Math.max(0, Math.min(1, (au.AU45 - 0.12) / 0.55)); // the tracker reports about 0.12 with open eyes
+      if (this.useCamMouth && this.style === 'natural') { const v = visemesFromCamera(au, this.emo.meta, this._vis2 || (this._vis2 = {})); for (const id of CAM_MOUTH) y[IDX[id]] = Math.min(1, v[id]); }
     }
     return y;
   }

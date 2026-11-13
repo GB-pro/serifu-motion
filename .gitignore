@@ -3,3 +3,5 @@ __pycache__/
 data/
 *.npz
 *.f32
+models/*.task
+models/emo_*.json

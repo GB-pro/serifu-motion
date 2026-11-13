@@ -1,23 +1,23 @@
 <!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden}#s{position:absolute;inset:0}</style>
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script></head><body><div id="s"></div>
 <script type="module">
+// Offline renderer used by render.mjs: plays rig-space emo tracks (T*K floats per avatar) frame by frame.
 import { Stage } from './ui/stage.js';
-import { Composer } from './core/project.js';
-import { DESIGNS } from './avatar/characters.js';
-import { K } from './core/au.js';
-const meta = (await fetch('models/emo_offline.json').then(r => r.json())).meta;
-const composer = new Composer(meta, DESIGNS);
-const stage = new Stage(document.getElementById('s'), { preserve: true });
-window.setup = (avatars) => { stage.setCharacters(avatars); };
-// tracks: array of Float32 arrays (flattened T*K), raw=true -> skip style exaggeration
-window.renderFrame = (tracks, i, opts = {}) => {
+import { K, IDS } from './core/au.js';
+const stage = new Stage(document.getElementById("s"), { preserve: true, shadows: false }); window.__stage = stage;
+let tracks = [];
+window.setup = (avatars, view) => { stage._sig = null; stage.setCharacters(avatars); stage.setView(view || null); };
+window.setTracks = (t) => { tracks = t.map((a) => Float32Array.from(a)); };
+// advance the simulation over frames [a, b) without drawing them
+window.stepFrames = (a, b) => { for (let i = a; i < b; i++) tracks.forEach((tr, j) => { const T = tr.length / K, t = Math.min(T - 1, i), o = {}; for (let k = 0; k < K; k++) o[IDS[k]] = tr[t * K + k]; stage.apply(j, o, 1 / 30); }); };
+window.renderFrame = (i, quality = 0.92) => {
   tracks.forEach((tr, j) => {
-    const T = tr.length / K, t = Math.min(T - 1, i);
-    const f = Float32Array.from(tr.slice(t * K, t * K + K));
-    stage.apply(j, opts.raw ? Object.fromEntries(meta.names.map((n, k) => [n, f[k]])) : composer.styled(f, stage.chars[j].d.name.toLowerCase()));
+    const T = tr.length / K, t = Math.min(T - 1, i), o = {};
+    for (let k = 0; k < K; k++) o[IDS[k]] = tr[t * K + k];
+    stage.apply(j, o, 1 / 30);
   });
   stage.render();
-  return stage.canvas.toDataURL('image/jpeg', 0.92);
+  return stage.canvas.toDataURL('image/jpeg', quality);
 };
 window.READY = true;
 </script></body></html>

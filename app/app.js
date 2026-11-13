@@ -1,8 +1,8 @@
 // Serifu Motion — application shell
 import { EmoGenerator } from './core/generator.js';
-import { IDS, K, EMOS, CHANNELS, GROUPS } from './core/au.js';
+import { IDS, K, EMOS, CHANNELS, GROUPS, frameToObj } from './core/au.js';
 import { SR, FPS } from './core/features.js';
-import { newSpeaker, analyzeSpeaker, generateSpeaker, diarize, Composer, insertGesture, exportEmo, exportCSV, GESTURES } from './core/project.js';
+import { newSpeaker, analyzeSpeaker, readSpeaker, directSpeaker, isDirected, upgradeTrack, diarize, Composer, insertGesture, exportEmo, exportCSV, GESTURES, STYLES } from './core/project.js';
 import { DESIGNS } from './avatar/characters.js';
 import { Stage } from './ui/stage.js';
 import { Timeline, EMO_COLORS } from './ui/timeline.js';
@@ -25,10 +25,12 @@ class App {
     sel.onchange = () => { setLang(sel.value); this.i18n(); };
     this.i18n();
     this.busy(t('analyzing'));
-    const [off, rt] = await Promise.all([fetch('models/emo_offline.json').then((r) => r.json()), fetch('models/emo_realtime.json').then((r) => r.json())]);
-    this.rtModel = rt;
-    this.gen = new EmoGenerator(off, rt);
-    this.composer = new Composer(this.gen.meta, DESIGNS);
+    const J = (u) => fetch(u).then((r) => r.json());
+    // three offline networks read the speech as a committee; the acting profiles give each avatar its own way of moving
+    const [off, rt, acting, ...extra] = await Promise.all([J('models/emo_offline.json'), J('models/emo_realtime.json'), J('avatar/acting.json'), J('models/emo_offline_b.json').catch(() => null), J('models/emo_offline_c.json').catch(() => null)]);
+    this.rtModel = rt; this.acting = acting;
+    this.gen = new EmoGenerator(off, rt, extra.filter(Boolean));
+    this.composer = new Composer(this.gen.meta);
     $('#modelInfo').textContent = `${t('model')}: ${this.gen.meta.dataset} · ${this.gen.meta.trained_clips} clips`;
     this.stage = new Stage($('#stage'), { preserve: true });
     this.timeline = new Timeline($('#timeline'), this);
@@ -49,7 +51,7 @@ class App {
     $('#play').onclick = () => this.togglePlay();
     $('#fileSep').onchange = (e) => this.addSeparate([...e.target.files]).finally(() => (e.target.value = ''));
     $('#fileMix').onchange = (e) => this.addMixed(e.target.files[0], +$('#nSpk').value).finally(() => (e.target.value = ''));
-    $('#fileProj').onchange = async (e) => { const f = e.target.files[0]; if (f) this.loadProject(JSON.parse(await f.text())); e.target.value = ''; };
+    $('#fileProj').onchange = async (e) => { const f = e.target.files[0]; if (f) await this.loadProject(JSON.parse(await f.text())); e.target.value = ''; };
     $('#demoBtn').onclick = () => this.loadDemo();
     $('#undo').onclick = () => this.undo(); $('#redo').onclick = () => this.redo();
     $('#zin').onclick = () => this.timeline.zoom(1.3); $('#zout').onclick = () => this.timeline.zoom(1 / 1.3);
@@ -130,14 +132,19 @@ class App {
   }
   async process(sp) {
     analyzeSpeaker(sp); await sleep(10);
-    generateSpeaker(sp, this.gen, 7 + this.project.speakers.length);
+    readSpeaker(sp, this.gen); await sleep(10);
+    this.redirect(sp);
+  }
+  // rebuild the performance from the stored reading (after a change of emotion, avatar, style or strength)
+  redirect(sp) {
+    if (!sp.recorded && sp.audio16k) directSpeaker(sp, this.gen, this.acting);
     this.recompose(sp);
   }
   padSpeakers() { // make all speaker tracks the same length (silence after shorter ones) so the dialogue stays aligned
     const T = Math.max(...this.project.speakers.map((s) => s.T));
     for (const sp of this.project.speakers) if (sp.T < T && sp.audio16k) {
       const a = new Float32Array(Math.ceil(T / FPS * SR)); a.set(sp.audio16k); sp.audio16k = a;
-      if (sp.base && !sp.recorded) { analyzeSpeaker(sp); generateSpeaker(sp, this.gen, 7); }
+      if (sp.base && !sp.recorded) { analyzeSpeaker(sp); readSpeaker(sp, this.gen); directSpeaker(sp, this.gen, this.acting); }
       else if (sp.base) { const b = new Float32Array(T * K); b.set(sp.base); for (let t2 = sp.T; t2 < T; t2++) b.set(sp.base.subarray((sp.T - 1) * K, sp.T * K), t2 * K); const e = new Float32Array(T * 6); e.set(sp.emo); sp.base = b; sp.emo = e; sp.T = T; }
       this.recompose(sp);
     }
@@ -165,7 +172,7 @@ class App {
       d.innerHTML = `<span class="dot" style="background:${sp.color}"></span>`;
       const name = document.createElement('input'); name.value = sp.name; name.onchange = () => { sp.name = name.value; this.timeline.draw(); };
       const av = document.createElement('select'); for (const k of AVATARS) av.add(new Option(DESIGNS[k].label[getLang()] || DESIGNS[k].label.en, k)); av.value = sp.avatar;
-      av.onchange = () => { sp.avatar = av.value; this.stage.setCharacters(this.project.speakers.map((s) => s.avatar)); this.applyFrame(this.time); };
+      av.onchange = () => { this.pushUndo(); sp.avatar = av.value; this.stage.setCharacters(this.project.speakers.map((s) => s.avatar)); this.redirect(sp); this.timeline.draw(); this.applyFrame(this.time); };
       d.append(name, av); d.onclick = (e) => { if (e.target === d || e.target.className === 'dot') this.selectSpeaker(sp); };
       name.onfocus = () => { if (this.selected !== sp) this.selectSpeaker(sp); };
       list.appendChild(d);
@@ -174,9 +181,16 @@ class App {
     const sp = this.selected; if (!sp) return;
     det.className = 'detail';
     const ex = document.createElement('label'); ex.className = 'mini'; ex.innerHTML = `${t('expressiveness')} <input type="range" min="0.3" max="2" step="0.05" value="${sp.expressiveness}"> <output>${Math.round(sp.expressiveness * 100)}%</output>`;
-    const exIn = ex.querySelector('input'); exIn.oninput = () => { sp.expressiveness = +exIn.value; ex.querySelector('output').textContent = Math.round(sp.expressiveness * 100) + '%'; this.recompose(sp); this.timeline.draw(); this.applyFrame(this.time); };
+    const exIn = ex.querySelector('input'); exIn.oninput = () => { sp.expressiveness = +exIn.value; ex.querySelector('output').textContent = Math.round(sp.expressiveness * 100) + '%'; this.redirect(sp); this.timeline.draw(); this.applyFrame(this.time); };
     exIn.onpointerdown = () => this.pushUndo();
     det.appendChild(ex);
+    // acting style: the animation layer (default) or the plain linear rendition of the learned motion
+    if (!sp.recorded) {
+      const st = document.createElement('label'); st.className = 'mini'; st.append(document.createTextNode(t('style') + ' '));
+      const ss = document.createElement('select'); for (const k of STYLES) ss.add(new Option(t('style_' + k), k)); ss.value = sp.style;
+      ss.onchange = () => { this.pushUndo(); sp.style = ss.value; this.redirect(sp); this.timeline.draw(); this.applyFrame(this.time); };
+      st.appendChild(ss); det.appendChild(st);
+    }
     const h1 = document.createElement('h3'); h1.textContent = t('gestures'); det.appendChild(h1);
     const chips = document.createElement('div'); chips.className = 'chips';
     for (const g of Object.keys(GESTURES)) { const b = document.createElement('button'); b.textContent = t(g); b.onclick = () => { this.pushUndo(); insertGesture(sp, g, this.time); this.onEdit(sp); }; chips.appendChild(b); }
@@ -190,26 +204,27 @@ class App {
     }
     det.appendChild(cl);
     const row = document.createElement('div'); row.className = 'row wrap'; row.style.marginTop = '10px';
-    const clr = document.createElement('button'); clr.className = 'ghost'; clr.textContent = t('clearEdits'); clr.onclick = () => { this.pushUndo(); sp.edits = {}; sp.emoOverrides = []; this.onEdit(sp); };
+    const clr = document.createElement('button'); clr.className = 'ghost'; clr.textContent = t('clearEdits'); clr.onclick = () => { this.pushUndo(); sp.edits = {}; sp.emoOverrides = []; this.redirect(sp); this.onEdit(sp); };
     const regen = document.createElement('button'); regen.className = 'ghost'; regen.textContent = t('regenerate'); regen.disabled = !!sp.recorded;
-    regen.onclick = () => { this.pushUndo(); generateSpeaker(sp, this.gen, (Math.random() * 1e6) | 0); this.onEdit(sp); };
+    regen.title = t('regenerateHint');
+    regen.onclick = () => { this.pushUndo(); sp.seed = (Math.random() * 1e6) | 0; this.redirect(sp); this.onEdit(sp); };
     const del = document.createElement('button'); del.className = 'ghost danger'; del.textContent = t('delSpeaker'); del.onclick = () => { this.pushUndo(); this.project.speakers = this.project.speakers.filter((s) => s !== sp); this.afterChange(); };
     row.append(clr, regen, del); det.appendChild(row);
   }
 
   // ---------- editing ----------
-  snapshot() { return this.project.speakers.map((s) => ({ s, edits: JSON.parse(JSON.stringify(s.edits)), ov: JSON.parse(JSON.stringify(s.emoOverrides)), ex: s.expressiveness, base: s.base, emo: s.emo, avatar: s.avatar })); }
+  snapshot() { return this.project.speakers.map((s) => ({ s, edits: JSON.parse(JSON.stringify(s.edits)), ov: JSON.parse(JSON.stringify(s.emoOverrides)), ex: s.expressiveness, base: s.base, emo: s.emo, plan: s.plan, avatar: s.avatar, style: s.style, seed: s.seed })); }
   pushUndo() { this.undoStack.push({ speakers: this.project.speakers.slice(), snap: this.snapshot() }); if (this.undoStack.length > 80) this.undoStack.shift(); this.redoStack = []; }
-  restore(st) { this.project.speakers = st.speakers.slice(); for (const x of st.snap) { x.s.edits = x.edits; x.s.emoOverrides = x.ov; x.s.expressiveness = x.ex; x.s.base = x.base; x.s.emo = x.emo; x.s.avatar = x.avatar; this.recompose(x.s); } this.afterChange(); }
+  restore(st) { this.project.speakers = st.speakers.slice(); for (const x of st.snap) { x.s.edits = x.edits; x.s.emoOverrides = x.ov; x.s.expressiveness = x.ex; x.s.base = x.base; x.s.emo = x.emo; x.s.plan = x.plan; x.s.avatar = x.avatar; x.s.style = x.style; x.s.seed = x.seed; this.recompose(x.s); } this.afterChange(); }
   undo() { const st = this.undoStack.pop(); if (!st) return; this.redoStack.push({ speakers: this.project.speakers.slice(), snap: this.snapshot() }); this.restore(st); }
   redo() { const st = this.redoStack.pop(); if (!st) return; this.undoStack.push({ speakers: this.project.speakers.slice(), snap: this.snapshot() }); this.restore(st); }
   onEdit(sp) { this.recompose(sp); this.timeline.draw(); this.applyFrame(this.time); }
-  openEmoDialog(sp, a, b, existing) {
+  openEmoDialog(sp, a, b, existing, suggested = null, suggestedInt = null) {
     const dlg = $('#emoDlg');
     $('#emoRange').textContent = `${sp.name} · ${a.toFixed(2)}s – ${b.toFixed(2)}s`;
-    const cur = existing ? existing.emo : 'HAP';
+    const cur = existing ? existing.emo : (suggested || 'HAP');
     $('#emoChoices').querySelectorAll('button').forEach((x) => { x.textContent = t(x.dataset.emo); x.classList.toggle('on', x.dataset.emo === cur); });
-    $('#emoInt').value = existing ? existing.intensity : 0.8; $('#emoInt').oninput();
+    $('#emoInt').value = existing ? existing.intensity : (suggestedInt ?? 0.8); $('#emoInt').oninput();
     $('#emoRemove').hidden = !existing;
     dlg.onclose = () => {
       if (dlg.returnValue === 'apply') {
@@ -217,8 +232,8 @@ class App {
         const emo = $('#emoChoices').querySelector('.on')?.dataset.emo || 'HAP';
         if (existing) { existing.emo = emo; existing.intensity = +$('#emoInt').value; }
         else sp.emoOverrides.push({ start: a, end: b, emo, intensity: +$('#emoInt').value });
-        this.onEdit(sp);
-      } else if (dlg.returnValue === 'remove' && existing) { this.pushUndo(); sp.emoOverrides = sp.emoOverrides.filter((o) => o !== existing); this.onEdit(sp); }
+        this.redirect(sp); this.onEdit(sp);
+      } else if (dlg.returnValue === 'remove' && existing) { this.pushUndo(); sp.emoOverrides = sp.emoOverrides.filter((o) => o !== existing); this.redirect(sp); this.onEdit(sp); }
     };
     dlg.showModal();
   }
@@ -256,11 +271,13 @@ class App {
       if (!sp.final) return;
       const a = Math.min(sp.T - 1, i0), b = Math.min(sp.T - 1, i0 + 1);
       const f = new Float32Array(K); for (let k = 0; k < K; k++) f[k] = sp.final[a * K + k] * (1 - u) + sp.final[b * K + k] * u;
-      this.stage.apply(i, this.composer.styled(f, sp.avatar));
+      this.stage.apply(i, frameToObj(f), this.playing ? this._dt || 0 : 0); // hair and accessories follow through only while playing
     });
   }
   loop() {
+    let last = 0;
     const step = (now) => {
+      this._dt = Math.min(0.1, last ? (now - last) / 1000 : 0); last = now;
       if (!$('#studio').hidden) {
         if (this.playing) { this.time = Math.min(this.duration(), this.ac.currentTime - this.startAt); this.applyFrame(this.time); this.timeline.setTime(this.time); this.clock(); }
         this.stage.render();
@@ -297,29 +314,36 @@ class App {
   saveProject() {
     const f32 = (a) => b64(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
     const i16 = (a) => { const o = new Int16Array(a.length); for (let i = 0; i < a.length; i++) o[i] = Math.max(-32767, Math.min(32767, a[i] * 32767)); return b64(new Uint8Array(o.buffer)); };
-    return { format: 'serifu-motion-project/1', speakers: this.project.speakers.map((s) => ({ name: s.name, avatar: s.avatar, color: s.color, expressiveness: s.expressiveness, visible: s.visible, edits: s.edits, emoOverrides: s.emoOverrides, recorded: !!s.recorded, T: s.T, audio: i16(s.audio16k), base: f32(s.base), emo: f32(s.emo) })) };
+    // generated takes are rebuilt from their audio when the project is opened (same seed, same result); only live
+    // recordings carry their frames, because the camera's blinks and mouth cannot be regenerated
+    return { format: 'serifu-motion-project/2', speakers: this.project.speakers.map((s) => ({ name: s.name, avatar: s.avatar, color: s.color, expressiveness: s.expressiveness, style: s.style, seed: s.seed, visible: s.visible, edits: s.edits, emoOverrides: s.emoOverrides, recorded: !!s.recorded, T: s.T, audio: i16(s.audio16k), ...(s.recorded ? { base: f32(s.base), emo: f32(s.emo) } : {}) })) };
   }
-  loadProject(p) {
-    if (p.format !== 'serifu-motion-project/1') return;
+  async loadProject(p) {
+    const v1 = p.format === 'serifu-motion-project/1';
+    if (!v1 && p.format !== 'serifu-motion-project/2') return;
     this.pushUndo(); this.pause();
-    this.project.speakers = p.speakers.map((d, i) => {
-      const sp = newSpeaker(i, d.name, d.avatar);
-      Object.assign(sp, { color: d.color || sp.color, expressiveness: d.expressiveness ?? 1, visible: d.visible || sp.visible, edits: d.edits || {}, emoOverrides: d.emoOverrides || [], recorded: d.recorded, T: d.T });
+    const speakers = [];
+    for (let i = 0; i < p.speakers.length; i++) {
+      const d = p.speakers[i], sp = newSpeaker(i, d.name, d.avatar);
+      Object.assign(sp, { color: d.color || sp.color, expressiveness: d.expressiveness ?? 1, style: d.style || 'anime', seed: d.seed ?? sp.seed, visible: (d.visible || sp.visible).filter((id) => IDS.includes(id)), edits: d.edits || {}, emoOverrides: d.emoOverrides || [], recorded: !!d.recorded, T: d.T });
       const ia = new Int16Array(unb64(d.audio).buffer); sp.audio16k = Float32Array.from(ia, (v) => v / 32767);
-      sp.base = new Float32Array(unb64(d.base).buffer); sp.emo = new Float32Array(unb64(d.emo).buffer);
-      this.recompose(sp); return sp;
-    });
+      if (sp.recorded && d.base) { sp.base = upgradeTrack(new Float32Array(unb64(d.base).buffer), d.T, this.gen.meta); sp.emo = new Float32Array(unb64(d.emo).buffer); this.recompose(sp); }
+      else { sp.recorded = false; this.busy(t('generating') + ` (${i + 1}/${p.speakers.length})`); await sleep(20); await this.process(sp); }
+      speakers.push(sp);
+    }
+    this.project.speakers = speakers; this.busy(null);
     this.time = 0; this.afterChange(); this.timeline.setTime(0);
   }
   async loadDemo() {
     this.busy(t('analyzing'));
-    try { const p = await fetch('demo/demo.json').then((r) => r.json()); this.loadProject(p); } finally { this.busy(null); }
+    try { const p = await fetch('demo/demo.json').then((r) => r.json()); await this.loadProject(p); } finally { this.busy(null); }
   }
 
   // ---------- live ----------
   bindLive() {
     const sel = $('#liveAvatar'); for (const k of AVATARS) sel.add(new Option(DESIGNS[k].label[getLang()] || DESIGNS[k].label.en, k));
-    sel.onchange = () => this.liveStage && this.liveStage.setCharacters([sel.value]);
+    sel.onchange = () => { if (this.liveStage) this.liveStage.setCharacters([sel.value]); if (this.live) this.live.setProfile(this.acting[sel.value]); };
+    const ls = $('#liveStyle'); if (ls) { for (const k of STYLES) ls.add(new Option(t('style_' + k), k)); ls.onchange = () => this.live && this.live.setStyle(ls.value); }
     $('#liveStart').onclick = () => (this.live ? this.stopLive() : this.startLive());
     $('#liveRec').onclick = () => this.toggleRec();
     $('#camMouth').onchange = (e) => this.live && (this.live.useCamMouth = e.target.checked);
@@ -327,7 +351,7 @@ class App {
   }
   async startLive() {
     try {
-      this.live = new LiveSession({ rtModel: this.rtModel, video: $('#camPreview'), onStatus: () => {} });
+      this.live = new LiveSession({ rtModel: this.rtModel, video: $('#camPreview'), onStatus: () => {}, profile: this.acting[$('#liveAvatar').value], style: $('#liveStyle') ? $('#liveStyle').value : 'anime' });
       this.live.useCamMouth = $('#camMouth').checked; this.live.useCamBlink = $('#camBlink').checked;
       await this.live.start();
       $('#liveStart').textContent = t('stopLive'); $('#liveRec').disabled = false;
@@ -350,9 +374,7 @@ class App {
     if (this.live) {
       const f = this.live.tick(now);
       if (f) {
-        const sp = { base: f.y, T: 1, emo: null, edits: {}, emoOverrides: [], expressiveness: 1 };
-        const out = this.composer.frame(sp, 0);
-        this.liveStage.apply(0, this.composer.styled(out, $('#liveAvatar').value));
+        this.liveStage.apply(0, frameToObj(f.y), this._dt || 0);
         const m = $('#emoMeter'); if (!this._meterT || now - this._meterT > 150) { this._meterT = now; m.innerHTML = EMOS.map((e, j) => `<div><span style="width:52px">${t(e)}</span><i style="width:${Math.round(f.emo[j] * 160)}px;background:${EMO_COLORS[e]}"></i></div>`).join(''); }
         $('#faceStatus').textContent = this.live.cam ? (this.live.faceSeen ? t('faceFound') : t('noFace')) : '';
       }

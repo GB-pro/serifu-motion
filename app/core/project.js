@@ -1,13 +1,17 @@
 // Serifu Motion — project model: speakers, generated base emo, user edits, composition and export.
-import { IDS, K, IDX, EMOS, CHANNELS } from './au.js';
+// All emo tracks are in rig space (K channels of au.js): what the avatar plays is what the timeline shows and exports.
+import { IDS, K, KM, IDX, EMOS, CHANNELS } from './au.js';
 import { extractRaw, speakerStats, normalize, RAW_DIM, SR, FPS } from './features.js';
+import { POSES } from './animate.js';
+import { linearToRig } from './generator.js';
 
 export const SPEAKER_COLORS = ['#ff7a59', '#4f8cff', '#2bb673', '#b061ff', '#f5b700', '#ff4f9a'];
-const NO_EMO_OVERRIDE = new Set(['AU45', 'AU26']);
+export const STYLES = ['anime', 'natural'];
+const KEEP_SYNC = new Set(['AU45', 'AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24', 'AU28']); // blink and mouth shapes are never rescaled
 
 export function newSpeaker(i, name, avatar) {
-  return { id: 's' + Date.now().toString(36) + i, name, avatar, color: SPEAKER_COLORS[i % SPEAKER_COLORS.length], expressiveness: 1.0,
-    audio16k: null, T: 0, base: null, emo: null, voiced: null, raw: null, edits: {}, emoOverrides: [], visible: ['AU12', 'AU1', 'AU4', 'AU26', 'headPitch', 'headYaw'] };
+  return { id: 's' + Date.now().toString(36) + i, name, avatar, color: SPEAKER_COLORS[i % SPEAKER_COLORS.length], expressiveness: 1.0, style: 'anime', seed: 7 + i * 101,
+    audio16k: null, T: 0, base: null, emo: null, voiced: null, plan: null, raw: null, net: null, edits: {}, emoOverrides: [], visible: ['AU12', 'AU4', 'AU1', 'AU26', 'headPitch', 'headRoll', 'torsoLean'] };
 }
 
 // ---------- analysis ----------
@@ -18,12 +22,27 @@ export function analyzeSpeaker(sp) {
   const st = speakerStats([r]);
   sp.stats = st;
   sp.features = normalize(r.raw, r.nFrames, st);
+  sp.net = null;
   return sp;
 }
-export function generateSpeaker(sp, gen, seed = 7) {
-  const out = gen.generate(sp.features, sp.T, { seed });
-  sp.base = out.base; sp.emo = out.emo; sp.voiced = out.voiced;
+// the network's reading of the speech (emotion, accents, mouth): the slow step, done once per recording
+export function readSpeaker(sp, gen) { if (!sp.features) analyzeSpeaker(sp); sp.net = gen.runNet(sp.features, sp.T); return sp; }
+// the performance built from that reading: fast, repeated after every change of emotion, avatar, style or strength
+export function directSpeaker(sp, gen, acting = null) {
+  if (!sp.net) readSpeaker(sp, gen);
+  const out = gen.direct(sp.net, sp.features, sp.T, { seed: sp.seed, style: sp.style, profile: acting ? acting[sp.avatar] : null, overrides: sp.emoOverrides, exaggeration: sp.expressiveness });
+  sp.base = out.base; sp.emo = out.emo; sp.voiced = out.voiced; sp.plan = out.plan;
   return sp;
+}
+export function generateSpeaker(sp, gen, acting = null) { return directSpeaker(sp, gen, acting); }
+// takes the director can re-plan (generated from audio in the anime style); the others get additive corrections
+export const isDirected = (sp) => !sp.recorded && sp.style !== 'natural' && !!sp.plan;
+// projects saved by the first version kept tracks in tracker space (30 channels)
+export function upgradeTrack(base, T, meta) {
+  if (base.length === T * K) return base;
+  const out = new Float32Array(T * K), rig = new Float32Array(K);
+  for (let t = 0; t < T; t++) out.set(linearToRig(base.subarray(t * KM, (t + 1) * KM), meta, rig), t * K);
+  return out;
 }
 
 // ---------- simple diarization for a mixed dialogue file ----------
@@ -96,59 +115,42 @@ export function evalKeys(keys, t) {
 }
 
 export class Composer {
-  constructor(meta, designs) { this.meta = meta; this.designs = designs; this.neutral = meta.neutral || meta.y_mean; this.prof = meta.emo_profiles; }
-  // emotion override delta at frame t
+  constructor(meta) { this.meta = meta; }
+  // emotion ranges on takes the director cannot re-plan (linear style, live recordings): the key pose of the emotion is laid over the take
   emoDelta(sp, t, out) {
     const time = t / FPS;
     for (const ov of sp.emoOverrides) {
       if (time < ov.start - 0.3 || time > ov.end + 0.3) continue;
-      const ramp = Math.min(1, (time - (ov.start - 0.3)) / 0.3, ((ov.end + 0.3) - time) / 0.3);
-      const e = EMOS.indexOf(ov.emo);
-      for (let k = 0; k < K; k++) {
-        if (NO_EMO_OVERRIDE.has(IDS[k])) continue;
-        let cur = 0; for (let j = 0; j < EMOS.length; j++) cur += (sp.emo ? sp.emo[t * EMOS.length + j] : 0) * this.prof[j][k];
-        out[k] += ramp * (ov.intensity * this.prof[e][k] * 1.6 - Math.min(1, ov.intensity) * cur);
-      }
+      const ramp = Math.min(1, (time - (ov.start - 0.3)) / 0.3, ((ov.end + 0.3) - time) / 0.3), u = ramp * ramp * (3 - 2 * ramp);
+      const pose = POSES[ov.emo] && POSES[ov.emo][0]; if (!pose) continue;
+      for (const id in pose) { const k = IDX[id]; if (k !== undefined) out[k] += u * (ov.intensity ?? 0.8) * pose[id]; }
     }
   }
-  // returns Float32Array(K) final emo for speaker at frame t (before avatar style gains)
+  // returns Float32Array(K): the final rig-space emo of a speaker at frame t
   frame(sp, t, out = new Float32Array(K)) {
     t = Math.max(0, Math.min(sp.T - 1, t | 0));
-    if (!sp.base) { out.set(this.neutral); return out; }
+    if (!sp.base) { out.fill(0); return out; }
     out.set(sp.base.subarray(t * K, (t + 1) * K));
-    this.emoDelta(sp, t, out);
+    if (!isDirected(sp)) {
+      const ex = sp.expressiveness ?? 1;
+      if (ex !== 1) for (let k = 0; k < K; k++) if (!KEEP_SYNC.has(IDS[k])) out[k] *= ex;
+      if (sp.emoOverrides.length) this.emoDelta(sp, t, out);
+    }
     const time = t / FPS;
     for (const id in sp.edits) { const k = IDX[id]; if (k !== undefined) out[k] += evalKeys(sp.edits[id], time); }
-    // expressiveness around neutral (blink/jaw untouched to keep sync)
-    const ex = sp.expressiveness;
-    for (let k = 0; k < K; k++) { if (IDS[k] === 'AU45' || IDS[k] === 'AU26') continue; out[k] = this.neutral[k] + (out[k] - this.neutral[k]) * ex; }
-    for (let k = 0; k < 20; k++) out[k] = Math.max(0, Math.min(1.2, out[k]));
+    for (let k = 0; k < K; k++) { const [lo, hi] = CHANNELS[k].range; out[k] = Math.max(lo < 0 ? lo * 1.3 : 0, Math.min(hi * 1.3, out[k])); }
     return out;
   }
-  // avatar style: cartoon exaggeration per group (data is from restrained live actors)
-  styled(frameArr, avatarKey) {
-    const st = (this.designs[avatarKey] && this.designs[avatarKey].style) || {};
-    const o = {};
-    for (let k = 0; k < K; k++) {
-      const c = CHANNELS[k]; let v = frameArr[k];
-      const g = st[c.group] ?? DEFAULT_STYLE[c.group] ?? 1;
-      if (c.group === 'head' || c.group === 'torso' || c.group === 'gaze') v = v * g;
-      else if (IDS[k] !== 'AU45') v = this.neutral[k] + (v - this.neutral[k]) * g;
-      o[IDS[k]] = v;
-    }
-    return o;
-  }
 }
-export const DEFAULT_STYLE = { brow: 1.7, eye: 1.4, nose: 1.4, mouth: 1.25, gaze: 1.2, head: 1.6, torso: 1.4 };
 
 // ---------- gestures (inserted as additive key sets) ----------
 export const GESTURES = {
-  nod: [['headPitch', [[0, 0], [0.15, -9], [0.35, 3], [0.55, -4], [0.8, 0]]]],
-  shake: [['headYaw', [[0, 0], [0.15, 10], [0.4, -10], [0.65, 7], [0.9, 0]]]],
-  browFlash: [['AU1', [[0, 0], [0.1, 0.5], [0.45, 0.5], [0.7, 0]]], ['AU2', [[0, 0], [0.1, 0.5], [0.45, 0.5], [0.7, 0]]]],
-  smile: [['AU12', [[0, 0], [0.3, 0.6], [1.4, 0.6], [1.9, 0]]], ['AU6', [[0, 0], [0.3, 0.4], [1.4, 0.4], [1.9, 0]]]],
-  tilt: [['headRoll', [[0, 0], [0.3, 9], [1.3, 9], [1.8, 0]]]],
-  shrug: [['torsoShrug', [[0, 0], [0.2, -5], [0.6, -5], [0.9, 0]]], ['AU1', [[0, 0], [0.2, 0.3], [0.6, 0.3], [0.9, 0]]], ['headRoll', [[0, 0], [0.2, 4], [0.6, 4], [0.9, 0]]]],
+  nod: [['headPitch', [[0, 0], [0.1, -3], [0.24, 10], [0.42, -2], [0.58, 5], [0.85, 0]]], ['squash', [[0, 0], [0.12, 0.15], [0.26, -0.25], [0.45, 0.08], [0.7, 0]]]],
+  shake: [['headYaw', [[0, 0], [0.15, 12], [0.4, -12], [0.65, 8], [0.9, 0]]], ['torsoYaw', [[0, 0], [0.2, 3], [0.45, -3], [0.7, 2], [0.95, 0]]]],
+  browFlash: [['AU1', [[0, 0], [0.1, 0.55], [0.45, 0.5], [0.7, 0]]], ['AU2', [[0, 0], [0.1, 0.65], [0.45, 0.6], [0.7, 0]]], ['AU5', [[0, 0], [0.1, 0.3], [0.4, 0.2], [0.65, 0]]]],
+  smile: [['AU12', [[0, 0], [0.3, 0.75], [1.4, 0.7], [1.9, 0]]], ['AU6', [[0, 0], [0.3, 0.5], [1.4, 0.45], [1.9, 0]]], ['headRoll', [[0, 0], [0.35, 4], [1.4, 4], [1.9, 0]]]],
+  tilt: [['headRoll', [[0, 0], [0.12, -2], [0.35, 11], [1.3, 10], [1.8, 0]]], ['browAsym', [[0, 0], [0.3, 0.35], [1.3, 0.3], [1.8, 0]]]],
+  shrug: [['torsoShrug', [[0, 0], [0.2, -8], [0.6, -7], [0.9, 0]]], ['AU1', [[0, 0], [0.2, 0.35], [0.6, 0.3], [0.9, 0]]], ['AU2', [[0, 0], [0.2, 0.3], [0.6, 0.25], [0.9, 0]]], ['headRoll', [[0, 0], [0.2, 6], [0.6, 5], [0.9, 0]]]],
 };
 export function insertGesture(sp, name, t0) {
   for (const [id, pts] of GESTURES[name]) {
@@ -166,13 +168,14 @@ export function insertGesture(sp, name, t0) {
 export function exportEmo(project, composer) {
   const T = Math.max(...project.speakers.map((s) => s.T), 0);
   return {
-    format: 'serifu-motion-emo/1', fps: FPS, channels: IDS, emotions: EMOS,
-    channelInfo: CHANNELS.map((c) => ({ id: c.id, group: c.group, name: c.name.en })),
+    format: 'serifu-motion-emo/2', fps: FPS, channels: IDS, emotions: EMOS,
+    channelInfo: CHANNELS.map((c) => ({ id: c.id, group: c.group, range: c.range, name: c.name.en })),
     speakers: project.speakers.map((sp) => {
       const frames = []; const f = new Float32Array(K);
       for (let t = 0; t < sp.T; t++) { composer.frame(sp, t, f); frames.push(Array.from(f, (v) => +v.toFixed(4))); }
-      const emo = []; if (sp.emo) for (let t = 0; t < sp.T; t += 3) emo.push(Array.from(sp.emo.subarray(t * 6, t * 6 + 6), (v) => +v.toFixed(3)));
-      return { name: sp.name, avatar: sp.avatar, frames, emotionEvery3Frames: emo, emotionOverrides: sp.emoOverrides };
+      // the acting plan: per phrase the emotion that was played, its strength, the key pose and the accents
+      const plan = sp.plan ? sp.plan.phrases.map((ph) => ({ start: +(ph.tp / FPS).toFixed(3), end: +(ph.t1 / FPS).toFixed(3), emotion: ph.emo, blend: ph.emo2, intensity: ph.inten, pose: ph.pose, setByUser: !!ph.fixed, accents: ph.accents.map((a) => ({ time: +(a.t / FPS).toFixed(3), kind: a.kind, key: a.key })) })) : null;
+      return { name: sp.name, avatar: sp.avatar, style: sp.recorded ? 'live' : sp.style, frames, plan, emotionOverrides: sp.emoOverrides };
     }),
     duration: T / FPS,
   };

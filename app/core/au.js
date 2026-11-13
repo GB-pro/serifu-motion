@@ -30,7 +30,20 @@ export const CHANNELS = [
   { id: 'torsoShift', group: 'torso', range: [-6, 6], name: { en: 'Torso Sway', ja: '胴体 左右移動' } },
   { id: 'torsoShrug', group: 'torso', range: [-6, 6], name: { en: 'Shoulder Shrug', ja: '肩すくめ' } },
   { id: 'torsoLean', group: 'torso', range: [-6, 6], name: { en: 'Lean Forward/Back', ja: '前傾・後傾' } },
+  // ---- acting channels: written by the animation layer (not predicted by the tracker-trained network) ----
+  { id: 'AU43', group: 'eye', range: [0, 1], anim: true, name: { en: 'Lid Droop (AU43)', ja: 'まぶたを伏せる (AU43)' } },
+  { id: 'browAsym', group: 'brow', range: [-1, 1], anim: true, name: { en: 'Brow L/R Offset', ja: '眉の左右差' } },
+  { id: 'mouthAsym', group: 'mouth', range: [-1, 1], anim: true, name: { en: 'Mouth Corner L/R Offset', ja: '口角の左右差' } },
+  { id: 'eyeScale', group: 'eye', range: [-1, 1], anim: true, name: { en: 'Eye Size', ja: '目の大きさ' } },
+  { id: 'pupil', group: 'eye', range: [-1, 1], anim: true, name: { en: 'Pupil Size', ja: '瞳の大きさ' } },
+  { id: 'squash', group: 'head', range: [-1, 1], anim: true, name: { en: 'Squash / Stretch', ja: 'つぶし・のばし' } },
+  { id: 'headX', group: 'head', range: [-5, 5], anim: true, name: { en: 'Head Side Shift', ja: '頭 左右移動' } },
+  { id: 'headY', group: 'head', range: [-5, 5], anim: true, name: { en: 'Head Up/Down Shift', ja: '頭 上下移動' } },
+  { id: 'torsoYaw', group: 'torso', range: [-20, 20], anim: true, name: { en: 'Torso Twist', ja: '胴体 ひねり' } },
+  { id: 'torsoY', group: 'torso', range: [-6, 6], anim: true, name: { en: 'Body Bounce', ja: '胴体 上下' } },
 ];
+// the first KM channels are the network's outputs; the rest are acting channels
+export const KM = 30;
 export const IDS = CHANNELS.map((c) => c.id);
 export const K = CHANNELS.length;
 export const IDX = Object.fromEntries(IDS.map((id, i) => [id, i]));
@@ -53,3 +66,4 @@ export function blendshapesToAU(bs) {
   };
 }
 export function frameToObj(arr, off = 0) { const o = {}; for (let i = 0; i < K; i++) o[IDS[i]] = arr[off + i]; return o; }
+export const N_AU = 20; // AU1..AU45 occupy the first 20 slots

@@ -1,0 +1,250 @@
+WARNING: Logging before InitGoogle() is written to STDERR
+W0000 00:00:1794582194.600739   23661 face_landmarker_graph.cc:181] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+WARNING: Logging before InitGoogle() is written to STDERR
+W0000 00:00:1794582194.601319   23663 face_landmarker_graph.cc:181] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+INFO: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.Created TensorFlow Lite XNNPACK delegate for CPU.
+
+W0000 00:00:1794582194.618900   23670 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794582194.620787   23672 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794582194.638890   23670 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+WARNING: Logging before InitGoogle() is written to STDERR
+W0000 00:00:1794582194.641538   23691 face_landmarker_graph.cc:181] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+W0000 00:00:1794582194.645880   23672 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+INFO: [environment.cc:36] Creating LiteRT environment with options
+INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=0x7f35c40035c0, name=CpuAccelerator
+INFO: [cpu_registry.cc:75] XNNPACK CPU accelerator registered.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+INFO: [compiled_model.cc:1022] Flatbuffer model initialized directly from incoming litert model.
+INFO: [environment.cc:36] Creating LiteRT environment with options
+INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=0x7f35c80038c0, name=CpuAccelerator
+INFO: [cpu_registry.cc:75] XNNPACK CPU accelerator registered.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+INFO: [compiled_model.cc:1022] Flatbuffer model initialized directly from incoming litert model.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794582194.664384   23706 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794582194.681409   23707 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+INFO: [environment.cc:36] Creating LiteRT environment with options
+INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=0x7f35c8005000, name=CpuAccelerator
+INFO: [cpu_registry.cc:75] XNNPACK CPU accelerator registered.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+INFO: [compiled_model.cc:1022] Flatbuffer model initialized directly from incoming litert model.
+INFO: [environment.cc:36] Creating LiteRT environment with options
+INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=0x7f35bc0036b0, name=CpuAccelerator
+INFO: [cpu_registry.cc:75] XNNPACK CPU accelerator registered.
+INFO: [compiled_model.cc:1022] Flatbuffer model initialized directly from incoming litert model.
+INFO: [environment.cc:36] Creating LiteRT environment with options
+INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=0x7f35c4094500, name=CpuAccelerator
+INFO: [cpu_registry.cc:75] XNNPACK CPU accelerator registered.
+INFO: [compiled_model.cc:1022] Flatbuffer model initialized directly from incoming litert model.
+W0000 00:00:1794582194.739087   23701 inference_runner_litert.cc:1433] Input tensor memory is not aligned according to LiteRt's memory alignment requirements. Reallocating memory and copying data.
+INFO: [environment.cc:36] Creating LiteRT environment with options
+INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=0x7f35c0002910, name=CpuAccelerator
+INFO: [cpu_registry.cc:75] XNNPACK CPU accelerator registered.
+INFO: [compiled_model.cc:1022] Flatbuffer model initialized directly from incoming litert model.
+W0000 00:00:1794582194.768289   23698 inference_runner_litert.cc:1433] Input tensor memory is not aligned according to LiteRt's memory alignment requirements. Reallocating memory and copying data.
+W0000 00:00:1794582194.785798   23710 inference_runner_litert.cc:1433] Input tensor memory is not aligned according to LiteRt's memory alignment requirements. Reallocating memory and copying data.
+W0000 00:00:1794582194.795135   23712 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+WARNING: Logging before InitGoogle() is written to STDERR
+W0000 00:00:1794582194.826274   23718 face_landmarker_graph.cc:181] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+W0000 00:00:1794582194.826867   23697 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+W0000 00:00:1794582194.834111   23710 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794582194.853508   23722 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794582194.869412   23722 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+INFO: [environment.cc:36] Creating LiteRT environment with options
+INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=0x7f35c40038c0, name=CpuAccelerator
+INFO: [cpu_registry.cc:75] XNNPACK CPU accelerator registered.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+WARNING: [model_load.cc:402] Sparsity tensors may not yet be fully supported.
+INFO: [compiled_model.cc:1022] Flatbuffer model initialized directly from incoming litert model.
+INFO: [environment.cc:36] Creating LiteRT environment with options
+INFO: [accelerator_registry.cc:54] RegisterAccelerator: ptr=0x7f35d0006030, name=CpuAccelerator
+INFO: [cpu_registry.cc:75] XNNPACK CPU accelerator registered.
+INFO: [compiled_model.cc:1022] Flatbuffer model initialized directly from incoming litert model.
+W0000 00:00:1794582194.973208   23728 inference_runner_litert.cc:1433] Input tensor memory is not aligned according to LiteRt's memory alignment requirements. Reallocating memory and copying data.
+W0000 00:00:1794582195.032768   23728 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+200 1003_ITS_FEA_XX ok
+400 1005_WSI_ANG_XX ok
+600 1008_IOM_ANG_XX ok
+800 1010_TSI_NEU_XX ok
+1000 1013_ITH_ANG_XX ok
+1200 1015_TAI_FEA_XX ok
+1400 1018_IEO_FEA_MD ok
+1600 1020_TAI_FEA_XX ok
+1800 1023_IEO_FEA_MD ok
+2000 1025_IWW_NEU_XX ok
+2200 1028_DFA_ANG_XX ok
+2400 1030_IWL_ANG_XX ok
+2600 1032_WSI_ANG_XX ok
+2800 1035_ITH_FEA_XX ok
+3000 1037_TIE_FEA_XX ok
+3200 1040_IEO_SAD_LO ok
+3400 1042_MTI_NEU_XX ok
+3600 1045_IEO_DIS_LO ok
+3800 1047_IWW_ANG_XX ok
+4000 1049_WSI_FEA_XX ok
+4200 1052_ITS_FEA_XX ok
+4400 1054_TSI_FEA_XX ok
+4600 1057_IOM_ANG_XX ok
+4800 1059_TAI_NEU_XX ok
+5000 1062_IEO_HAP_LO ok
+5200 1064_MTI_NEU_XX ok
+5400 1067_IEO_DIS_LO ok
+5600 1069_IWL_FEA_XX ok
+5800 1071_WSI_FEA_XX ok
+6000 1074_ITH_NEU_XX ok
+6200 1076_TSI_HAP_XX ok
+6400 1079_IOM_DIS_XX ok
+6600 1081_TAI_DIS_XX ok
+6800 1084_IEO_FEA_LO ok
+7000 1086_IWW_HAP_XX ok
+7200 1088_WSI_SAD_XX ok
+7400 1091_ITS_SAD_XX ok
+DONE 7442

@@ -1,0 +1,23 @@
+WARNING: Logging before InitGoogle() is written to STDERR
+W0000 00:00:1794586932.377544    9986 face_landmarker_graph.cc:181] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1794586932.399349    9990 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1794586932.411498    9990 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+2000 frames, detected 287
+4000 frames, detected 598
+6000 frames, detected 888
+8000 frames, detected 1238
+10000 frames, detected 1709
+12000 frames, detected 1966
+14000 frames, detected 2183
+16000 frames, detected 2709
+18000 frames, detected 2890
+20000 frames, detected 2891
+DONE 21312 detected 2891
+Exception ignored in: <function FaceLandmarker.__del__ at 0x7f129a9aba60>
+Traceback (most recent call last):
+  File "/root/venv/lib/python3.13/site-packages/mediapipe/tasks/python/vision/face_landmarker.py", line 3361, in __del__
+  File "/root/venv/lib/python3.13/site-packages/mediapipe/tasks/python/vision/face_landmarker.py", line 3336, in close
+  File "/root/venv/lib/python3.13/site-packages/mediapipe/tasks/python/core/serial_dispatcher.py", line 74, in shutdown_aware_handler
+  File "/root/venv/lib/python3.13/site-packages/mediapipe/tasks/python/core/mediapipe_c_utils.py", line 126, in dispatcher_wrapper
+TypeError: 'NoneType' object is not callable

@@ -1,10 +1,12 @@
-// Serifu Motion — multi-speaker timeline editor (canvas). Tracks per speaker: audio, emotion, AU/head/torso curves.
+// Serifu Motion — multi-speaker timeline editor (canvas). Tracks per speaker: audio, acting plan (emotion per phrase,
+// accents), AU/head/torso curves.
 import { IDS, K, IDX, EMOS, CHANNELS } from '../core/au.js';
 import { FPS } from '../core/features.js';
 import { t as tr, chName } from './i18n.js';
+import { isDirected } from '../core/project.js';
 
 export const EMO_COLORS = { NEU: '#9aa5b1', HAP: '#ffb300', SAD: '#4f7cff', ANG: '#ff4d4d', FEA: '#a05cff', DIS: '#2bb673' };
-const HEAD_W = 168, RULER = 26, SP_H = 26, WAVE_H = 38, EMO_H = 24, CH_H = 40;
+const HEAD_W = 168, RULER = 26, SP_H = 26, WAVE_H = 38, EMO_H = 32, CH_H = 40;
 
 export class Timeline {
   constructor(el, app) {
@@ -59,12 +61,7 @@ export class Timeline {
       if (l.type === 'ch') this.app.selectSpeaker(l.sp);
       return;
     }
-    if (l.type === 'emo') {
-      const t0 = this.x2t(x);
-      const hit = l.sp.emoOverrides.find((o) => t0 >= o.start && t0 <= o.end);
-      if (hit) { this.app.openEmoDialog(l.sp, hit.start, hit.end, hit); return; }
-      this.drag = { type: 'range', l, t0, t1: t0 }; return;
-    }
+    if (l.type === 'emo') { const t0 = this.x2t(x); this.drag = { type: 'range', l, t0, t1: t0 }; return; }
     if (l.type === 'ch') {
       const sp = l.sp, t = this.x2t(x);
       const keys = sp.edits[l.id] || (sp.edits[l.id] = []);
@@ -108,7 +105,17 @@ export class Timeline {
   }
   _up() {
     const d = this.drag; this.drag = null;
-    if (d?.type === 'range') { const a = Math.min(d.t0, d.t1), b = Math.max(d.t0, d.t1); if (b - a > 0.1) this.app.openEmoDialog(d.l.sp, a, b, null); this.draw(); }
+    if (d?.type === 'range') {
+      const a = Math.min(d.t0, d.t1), b = Math.max(d.t0, d.t1), sp = d.l.sp;
+      if (b - a > 0.1) this.app.openEmoDialog(sp, a, b, null); // dragged: a new emotion for that stretch
+      else { // clicked: change the emotion of the phrase (or the range) under the pointer
+        const hit = sp.emoOverrides.find((o) => a >= o.start && a <= o.end);
+        const ph = isDirected(sp) ? sp.plan.phrases.find((q) => a >= q.tp / FPS && a <= q.t1 / FPS) : null;
+        if (hit) this.app.openEmoDialog(sp, hit.start, hit.end, hit);
+        else if (ph) this.app.openEmoDialog(sp, +(ph.t0 / FPS - 0.05).toFixed(2), +(ph.t1 / FPS + 0.05).toFixed(2), null, ph.emo, ph.inten);
+      }
+      this.draw();
+    }
   }
   _dbl(e) {
     const [x, y] = this._pos(e); const l = this.laneAt(y); if (!l || l.type !== 'ch') return;
@@ -183,8 +190,23 @@ export class Timeline {
       return;
     }
     if (l.type === 'emo') {
-      g.fillText(tr('emotion'), 12, l.y + l.h / 2);
+      g.fillText(tr(isDirected(sp) ? 'acting' : 'emotion'), 12, l.y + l.h / 2);
       if (!sp.emo) return;
+      if (isDirected(sp)) {
+        // the acting plan: one block per phrase (emotion played, strength), a stripe for a blended second emotion,
+        // ticks for the accents; a white frame marks emotions set by the user
+        for (const ph of sp.plan.phrases) {
+          const a = this.t2x(ph.tp / FPS), b = this.t2x(ph.t1 / FPS); if (b < HEAD_W || a > W) continue;
+          const xa = Math.max(HEAD_W, a), top = l.y + 3, hh = l.h - 12;
+          g.globalAlpha = ph.fixed ? 1 : 0.45 + 0.55 * Math.min(1, ph.conf * 1.5); g.fillStyle = EMO_COLORS[ph.emo]; g.fillRect(xa, top, b - xa, hh);
+          if (ph.emo2) { g.fillStyle = EMO_COLORS[ph.emo2]; g.fillRect(xa, top + hh - 5, b - xa, 5); }
+          g.globalAlpha = 1;
+          if (ph.fixed) { g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.strokeRect(xa + 0.75, top + 0.75, b - xa - 1.5, hh - 1.5); g.lineWidth = 1; }
+          if (b - xa > 44) { g.fillStyle = '#14161a'; g.font = '600 11px system-ui, sans-serif'; g.fillText(trunc(`${tr(ph.emo)}${ph.emo2 ? '+' + tr(ph.emo2) : ''} ${Math.round(ph.inten * 100)}%`, Math.floor((b - xa) / 7)), xa + 5, top + hh / 2); }
+          for (const ac of ph.accents) { const xc = this.t2x(ac.t / FPS); if (xc < HEAD_W) continue; const r = ac.key ? 4 : 3; g.fillStyle = ac.key ? C('--tl-text') : C('--tl-text-dim'); g.beginPath(); g.moveTo(xc - r, l.y + l.h - 2); g.lineTo(xc + r, l.y + l.h - 2); g.lineTo(xc, l.y + l.h - 9); g.fill(); }
+        }
+        return;
+      }
       for (let x = Math.floor(x0); x < x1; x += 2) {
         const t = Math.round(this.x2t(x) * FPS); if (t < 0 || t >= T) continue;
         let bi = 0, bv = 0; for (let e = 0; e < 6; e++) { const v = sp.emo[t * 6 + e]; if (v > bv) { bv = v; bi = e; } }

@@ -10,14 +10,15 @@ export class Stage {
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    const shadows = opts.shadows !== false; // the floor shadow costs about half of the frame time on a software renderer
+    this.renderer.shadowMap.enabled = shadows; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
     const scene = (this.scene = new THREE.Scene());
     scene.background = this._bgTexture();
     const pm = new THREE.PMREMGenerator(this.renderer);
     scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
     scene.add(new THREE.HemisphereLight('#ffffff', '#c9b8a8', 0.55));
-    const key = new THREE.DirectionalLight('#fff1e0', 1.7); key.position.set(2.5, 4, 5); key.castShadow = true;
+    const key = new THREE.DirectionalLight('#fff1e0', 1.7); key.position.set(2.5, 4, 5); key.castShadow = shadows;
     key.shadow.mapSize.set(1024, 1024); key.shadow.camera.left = -8; key.shadow.camera.right = 8; key.shadow.camera.top = 6; key.shadow.camera.bottom = -3; key.shadow.bias = -0.0005;
     scene.add(key);
     const rim = new THREE.DirectionalLight('#cfe4ff', 1.1); rim.position.set(-4, 3, -4); scene.add(rim);
@@ -55,14 +56,18 @@ export class Stage {
     const width = n * 2.5 + 0.6, height = 2.9;
     const dist = Math.max(height / 2 / Math.tan(fov / 2), width / 2 / Math.tan(fov / 2) / aspect) + 1.0;
     this.camera.position.set(0, 1.05, dist); this.camera.lookAt(0, 0.75, 0);
+    // optional fixed framing (used for close-ups and offline rendering): { y, ly, z }
+    if (this.view) { this.camera.position.set(this.view.x || 0, this.view.y ?? 1.05, this.view.z ?? dist); this.camera.lookAt(this.view.x || 0, this.view.ly ?? 0.75, 0); }
   }
+  setView(view) { this.view = view || null; this._frame(); }
   _resize() {
     const w = this.el.clientWidth || 640, h = this.el.clientHeight || 360;
     this.renderer.setSize(w, h, false);
     this.renderer.domElement.style.width = '100%'; this.renderer.domElement.style.height = '100%';
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix(); this._frame();
   }
-  apply(i, frameObj) { if (this.chars[i]) this.chars[i].apply(frameObj); }
+  // frameObj: rig-space channels { id: value }; dt > 0 advances the follow-through simulation (hair, accessories)
+  apply(i, frameObj, dt = 0) { if (this.chars[i]) this.chars[i].apply(frameObj, dt); }
   render() { this.renderer.render(this.scene, this.camera); }
   get canvas() { return this.renderer.domElement; }
 }
