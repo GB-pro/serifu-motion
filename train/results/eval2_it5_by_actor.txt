@@ -1,0 +1,23 @@
+fresh speakers: criterion                       1008    1016    1024    1032    1040    1048    1056    1064    1072   pass
+R reading accuracy                             0.697   0.683   0.707   0.659   0.805   0.744   0.720   0.765   0.805   9/9
+T lip sync r                                   0.523   0.709   0.657   0.611   0.735   0.407   0.594   0.434   0.481   6/9
+T accent lift                                  1.546   1.403   1.812   1.179   1.661   1.526   1.547   1.525   1.565   7/9
+L legibility vs actor                          0.847   1.094   1.080   1.268   1.016   0.873   1.051   0.938   1.068   6/9
+S closer to films (share)                      0.857   0.714   0.571   0.714   0.857   0.857   0.714   0.857   0.857   8/9
+S over-acting guard (max ratio to films)       1.956   1.743   1.786   1.743   1.674   1.943   1.764   1.929   1.914   9/9
+A jaw closed in silence                        1.000   1.000   1.000   0.999   1.000   1.000   0.992   0.998   0.996   9/9
+A max head step                                4.145   4.198   4.144   4.200   4.200   4.200   4.197   4.200   4.200   9/9
+all eight met by: [1040, 1056]
+
+held-out set 1 (fifth use): criterion           1083    1084    1085    1086    1087    1088    1089    1090    1091   pass
+R reading accuracy                             0.622   0.756   0.695   0.720   0.573   0.573   0.756   0.671   0.537   6/9
+T lip sync r                                   0.630   0.606   0.640   0.707   0.665   0.501   0.475   0.468   0.649   7/9
+T accent lift                                  1.294   1.699   1.763   1.529   1.724   1.475   1.655   1.363   1.555   6/9
+L legibility vs actor                          0.964   1.034   1.395   0.930   0.913   0.651   1.017   1.325   0.816   4/9
+S closer to films (share)                      0.714   0.857   0.857   0.571   0.571   0.714   0.857   0.714   0.857   7/9
+S over-acting guard (max ratio to films)       1.776   1.765   1.919   1.639   2.052   1.809   1.900   1.823   1.815   8/9
+A jaw closed in silence                        0.996   0.998   0.999   1.000   0.999   0.995   0.999   0.998   0.999   9/9
+A max head step                                4.189   4.200   4.198   4.200   4.200   4.200   4.200   4.200   4.200   9/9
+all eight met by: [1084, 1085]
+
+(each actor measured alone, about 82 lines each; legibility standardised per actor; observer trained on the 66 training actors)

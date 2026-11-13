@@ -1,0 +1,7 @@
+# Iteration 5 on held-out set 1 (its fifth use, for comparison with run 4 only: eval_short_heldout.txt), commit 062641a
+# node train/eval_short.mjs app/models/emo_offline.json,app/models/emo_offline_b.json,app/models/emo_offline_c.json <feat> 1083,...,1091
+all 82 lines of the speaker (as in the main evaluation)    0.656 n 738   NEU 0.56  HAP 0.53  SAD 0.66  ANG 0.85  FEA 0.70  DIS 0.63
+about 6 lines, one per emotion                             0.654 n 738   NEU 0.56  HAP 0.51  SAD 0.62  ANG 0.89  FEA 0.71  DIS 0.62
+3 lines                                                    0.592 n 738   NEU 0.45  HAP 0.47  SAD 0.57  ANG 0.79  FEA 0.65  DIS 0.60
+1 line on its own                                          0.580 n 738   NEU 0.52  HAP 0.43  SAD 0.62  ANG 0.69  FEA 0.65  DIS 0.56
+about 13 lines, all in the same emotion                    0.538 n 738   NEU 0.46  HAP 0.49  SAD 0.38  ANG 0.59  FEA 0.70  DIS 0.60

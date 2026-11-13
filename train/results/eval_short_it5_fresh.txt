@@ -1,0 +1,7 @@
+# Iteration 5, fresh speakers (SPLITS.md): the one check against the targets, run once at commit 062641a (networks and app code frozen)
+# node train/eval_short.mjs app/models/emo_offline.json,app/models/emo_offline_b.json,app/models/emo_offline_c.json <feat> 1008,1016,1024,1032,1040,1048,1056,1064,1072
+all 82 lines of the speaker (as in the main evaluation)    0.731 n 732   NEU 0.90  HAP 0.74  SAD 0.61  ANG 0.80  FEA 0.69  DIS 0.68
+about 6 lines, one per emotion                             0.735 n 732   NEU 0.84  HAP 0.73  SAD 0.58  ANG 0.84  FEA 0.70  DIS 0.73
+3 lines                                                    0.704 n 732   NEU 0.82  HAP 0.74  SAD 0.53  ANG 0.75  FEA 0.70  DIS 0.69
+1 line on its own                                          0.673 n 732   NEU 0.87  HAP 0.72  SAD 0.58  ANG 0.66  FEA 0.65  DIS 0.59
+about 13 lines, all in the same emotion                    0.631 n 732   NEU 0.79  HAP 0.72  SAD 0.39  ANG 0.56  FEA 0.67  DIS 0.67

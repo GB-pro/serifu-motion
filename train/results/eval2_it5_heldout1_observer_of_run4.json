@@ -1,0 +1,399 @@
+{
+ "criteria": {
+  "reading_acc_min": 0.6,
+  "lip_r_min": 0.5,
+  "accent_lift_min": 1.5,
+  "legible_ratio_min": 1.0,
+  "style_closer_share_min": 0.7,
+  "style_overact_max": 2.0,
+  "jaw_closed_silence_min": 0.9,
+  "max_head_step_deg": 7.0
+ },
+ "clips": 738,
+ "actors": [
+  1083,
+  1084,
+  1085,
+  1086,
+  1087,
+  1088,
+  1089,
+  1090,
+  1091
+ ],
+ "observer": {
+  "validation_accuracy_on_real_faces": 0.7040280210157618,
+  "l2": 0.001
+ },
+ "reading_accuracy_in_this_run": 0.6558265582655827,
+ "legibility": {
+  "original definition (observer applied as it is)": {
+   "actor": 0.5853658536585366,
+   "actor per emotion": {
+    "NEU": 0.6018518518518519,
+    "HAP": 0.6666666666666666,
+    "SAD": 0.5793650793650794,
+    "ANG": 0.5396825396825397,
+    "FEA": 0.3412698412698413,
+    "DIS": 0.7857142857142857
+   },
+   "actor answers": {
+    "NEU": 118,
+    "HAP": 104,
+    "SAD": 183,
+    "ANG": 94,
+    "FEA": 73,
+    "DIS": 166
+   },
+   "lin": 0.532520325203252,
+   "lin per emotion": {
+    "NEU": 0.23148148148148148,
+    "HAP": 0.42063492063492064,
+    "SAD": 0.7063492063492064,
+    "ANG": 0.7222222222222222,
+    "FEA": 0.4365079365079365,
+    "DIS": 0.6349206349206349
+   },
+   "lin answers": {
+    "NEU": 39,
+    "HAP": 80,
+    "SAD": 214,
+    "ANG": 112,
+    "FEA": 137,
+    "DIS": 156
+   },
+   "auto": 0.18157181571815717,
+   "auto per emotion": {
+    "NEU": 0.0,
+    "HAP": 0.0,
+    "SAD": 0.0873015873015873,
+    "ANG": 0.0,
+    "FEA": 0.6666666666666666,
+    "DIS": 0.30952380952380953
+   },
+   "auto answers": {
+    "NEU": 19,
+    "HAP": 0,
+    "SAD": 194,
+    "ANG": 0,
+    "FEA": 424,
+    "DIS": 101
+   },
+   "auto, lines the network read correctly": 0.2066115702479339,
+   "auto, observer agrees with the emotion that was played": 0.2859078590785908,
+   "fix": 0.18292682926829268,
+   "fix per emotion": {
+    "NEU": 0.0,
+    "HAP": 0.0,
+    "SAD": 0.0,
+    "ANG": 0.0,
+    "FEA": 0.5952380952380952,
+    "DIS": 0.47619047619047616
+   },
+   "fix answers": {
+    "NEU": 23,
+    "HAP": 0,
+    "SAD": 159,
+    "ANG": 0,
+    "FEA": 445,
+    "DIS": 111
+   }
+  },
+  "revised (standardised per character)": {
+   "actor": 0.6043360433604336,
+   "actor per emotion": {
+    "NEU": 0.5462962962962963,
+    "HAP": 0.7698412698412699,
+    "SAD": 0.47619047619047616,
+    "ANG": 0.6428571428571429,
+    "FEA": 0.47619047619047616,
+    "DIS": 0.7063492063492064
+   },
+   "actor answers": {
+    "NEU": 106,
+    "HAP": 126,
+    "SAD": 135,
+    "ANG": 124,
+    "FEA": 131,
+    "DIS": 116
+   },
+   "lin": 0.5650406504065041,
+   "lin per emotion": {
+    "NEU": 0.5092592592592593,
+    "HAP": 0.48412698412698413,
+    "SAD": 0.6349206349206349,
+    "ANG": 0.7698412698412699,
+    "FEA": 0.38095238095238093,
+    "DIS": 0.6031746031746031
+   },
+   "lin answers": {
+    "NEU": 113,
+    "HAP": 94,
+    "SAD": 176,
+    "ANG": 123,
+    "FEA": 111,
+    "DIS": 121
+   },
+   "auto": 0.6273712737127372,
+   "auto per emotion": {
+    "NEU": 0.5092592592592593,
+    "HAP": 0.5555555555555556,
+    "SAD": 0.6190476190476191,
+    "ANG": 0.8253968253968254,
+    "FEA": 0.6349206349206349,
+    "DIS": 0.6031746031746031
+   },
+   "auto answers": {
+    "NEU": 81,
+    "HAP": 95,
+    "SAD": 139,
+    "ANG": 126,
+    "FEA": 169,
+    "DIS": 128
+   },
+   "auto, lines the network read correctly": 0.9235537190082644,
+   "auto, observer agrees with the emotion that was played": 0.8997289972899729,
+   "fix": 0.9512195121951219,
+   "fix per emotion": {
+    "NEU": 0.9722222222222222,
+    "HAP": 0.9841269841269841,
+    "SAD": 0.9444444444444444,
+    "ANG": 0.8968253968253969,
+    "FEA": 0.9365079365079365,
+    "DIS": 0.9761904761904762
+   },
+   "fix answers": {
+    "NEU": 111,
+    "HAP": 127,
+    "SAD": 124,
+    "ANG": 118,
+    "FEA": 120,
+    "DIS": 138
+   }
+  }
+ },
+ "lip_sync_r": {
+  "lin": 0.6404278183777831,
+  "auto": 0.5943814665890375
+ },
+ "accent_timing": {
+  "original definition (peaks above 0.5 SD, +-4 frames)": {
+   "accents": 589,
+   "on_actor_emphasis": 0.8709677419354839,
+   "chance": 0.6783254196482311,
+   "lift": 1.283996908721413,
+   "largest_possible_lift": 1.474218672976437
+  },
+  "revised (strong peaks above 1.0 SD, +-3 frames)": {
+   "accents": 589,
+   "on_actor_emphasis": 0.6943972835314092,
+   "chance": 0.44048017120310307,
+   "lift": 1.5764552616177274,
+   "largest_possible_lift": 2.2702497532832306
+  }
+ },
+ "artifacts": {
+  "lin": {
+   "max_head_step_deg": 8.012059211730957,
+   "jaw_closed_in_silence": 0.9597341420920178
+  },
+  "auto": {
+   "max_head_step_deg": 4.199999809265137,
+   "jaw_closed_in_silence": 0.9978060269729625
+  }
+ },
+ "style": {
+  "films (tracked)": {
+   "head range pitch (deg, p95)": 12.715643882751465,
+   "head range yaw (deg, p95)": 14.798145294189453,
+   "head range roll (deg, p95)": 9.111190795898438,
+   "head speed, low-passed (deg/s)": 23.122708797470086,
+   "head moves per minute": 23.899413243922883,
+   "head move size (deg, median)": 4.253968238830566,
+   "head move peak speed (deg/s)": 45.198638916015625
+  },
+  "seated actors (tracked)": {
+   "head range pitch (deg, p95)": 5.324368158039805,
+   "head range yaw (deg, p95)": 2.830792288025633,
+   "head range roll (deg, p95)": 2.8842748958751723,
+   "head speed, low-passed (deg/s)": 7.339122480509195,
+   "head moves per minute": 34.37940457356537,
+   "head move size (deg, median)": 4.137799989902771,
+   "head move peak speed (deg/s)": 27.206432807134327
+  },
+  "extra": {
+   "films (tracked)": {
+    "seconds": 248.54166666666666,
+    "head still (share of time)": 0.07309304274937133,
+    "head move size (deg, p90)": 13.407705688476563,
+    "head moves that overshoot (share)": 0.41836734693877553,
+    "head moves with a counter-move before (share)": 0.5698924731182796
+   },
+   "seated actors (tracked)": {
+    "seconds": 3766.2083333333335,
+    "head still (share of time)": 0.5570810607485424,
+    "head move size (deg, p90)": 8.686018010867722,
+    "head moves that overshoot (share)": 0.5651162790697675,
+    "head moves with a counter-move before (share)": 0.5414444983034415
+   },
+   "actor": {
+    "seconds": 1901.0,
+    "head still (share of time)": 0.3967867788883044,
+    "head move size (deg, p90)": 11.920435574180761,
+    "head moves that overshoot (share)": 0.4805491990846682,
+    "head moves with a counter-move before (share)": 0.4567307692307692
+   },
+   "lin": {
+    "seconds": 1901.0,
+    "head still (share of time)": 0.010257759074171488,
+    "head move size (deg, p90)": 14.719990246300235,
+    "head moves that overshoot (share)": 0.5877192982456141,
+    "head moves with a counter-move before (share)": 0.5143769968051118
+   },
+   "auto": {
+    "seconds": 1901.0,
+    "head still (share of time)": 0.39457303173768193,
+    "head move size (deg, p90)": 17.13147269237431,
+    "head moves that overshoot (share)": 0.4142739950779327,
+    "head moves with a counter-move before (share)": 0.41492265696087355
+   }
+  },
+  "actor": {
+   "head range pitch (deg, p95)": 8.370397218689321,
+   "head range yaw (deg, p95)": 5.0489664137363395,
+   "head range roll (deg, p95)": 4.545668435282999,
+   "head speed, low-passed (deg/s)": 10.555608360455235,
+   "head moves per minute": 41.75697001578117,
+   "head move size (deg, median)": 4.7502457325425285,
+   "head move peak speed (deg/s)": 29.903611083076225
+  },
+  "actor_closer_to_films": {
+   "head range pitch (deg, p95)": true,
+   "head range yaw (deg, p95)": false,
+   "head range roll (deg, p95)": false,
+   "head speed, low-passed (deg/s)": false,
+   "head moves per minute": false,
+   "head move size (deg, median)": true,
+   "head move peak speed (deg/s)": false
+  },
+  "actor_closer_share": 0.2857142857142857,
+  "actor_max_ratio_to_films": 1.7471964516283298,
+  "lin": {
+   "head range pitch (deg, p95)": 12.018111479119383,
+   "head range yaw (deg, p95)": 7.819766728579991,
+   "head range roll (deg, p95)": 7.827350977808236,
+   "head speed, low-passed (deg/s)": 23.03785477883324,
+   "head moves per minute": 11.299316149395054,
+   "head move size (deg, median)": 7.535363571274594,
+   "head move peak speed (deg/s)": 47.77620012966667
+  },
+  "lin_closer_to_films": {
+   "head range pitch (deg, p95)": true,
+   "head range yaw (deg, p95)": true,
+   "head range roll (deg, p95)": true,
+   "head speed, low-passed (deg/s)": true,
+   "head moves per minute": true,
+   "head move size (deg, median)": true,
+   "head move peak speed (deg/s)": true
+  },
+  "lin_closer_share": 1.0,
+  "lin_max_ratio_to_films": 1.7713727861179558,
+  "auto": {
+   "head range pitch (deg, p95)": 8.437941938638685,
+   "head range yaw (deg, p95)": 11.509769844888428,
+   "head range roll (deg, p95)": 5.664281388744712,
+   "head speed, low-passed (deg/s)": 14.128108162747301,
+   "head moves per minute": 39.38979484481852,
+   "head move size (deg, median)": 7.596725628716364,
+   "head move peak speed (deg/s)": 55.9174862602588
+  },
+  "auto_closer_to_films": {
+   "head range pitch (deg, p95)": true,
+   "head range yaw (deg, p95)": true,
+   "head range roll (deg, p95)": true,
+   "head speed, low-passed (deg/s)": true,
+   "head moves per minute": false,
+   "head move size (deg, median)": true,
+   "head move peak speed (deg/s)": true
+  },
+  "auto_closer_share": 0.8571428571428571,
+  "auto_max_ratio_to_films": 1.7857974489261197
+ },
+ "structure": {
+  "actor": {
+   "pose changes measured": 575,
+   "pose is there before the first word (share of phrases)": 0.1808695652173913,
+   "pose arrives, frames before the first word (median; negative = after)": -6.0,
+   "pose change takes (frames, 10% to 90%, median)": 11.0,
+   "pose change starts with a counter-move (share)": 0.13217391304347825,
+   "pose change goes past its final pose (share)": 0.7252173913043478,
+   "face holds its pose while the words run (share of speech frames)": 0.3604329619973137,
+   "left/right asymmetry in use (share of expressive frames)": 0.0,
+   "blinks at phrase starts and ends (share of blinks)": 0.35324015247776364,
+   "blinks: share expected by chance": 0.2653268581662878,
+   "blinks per minute": 24.39553626782393
+  },
+  "lin": {
+   "pose changes measured": 719,
+   "pose is there before the first word (share of phrases)": 0.2545201668984701,
+   "pose arrives, frames before the first word (median; negative = after)": -4.0,
+   "pose change takes (frames, 10% to 90%, median)": 11.0,
+   "pose change starts with a counter-move (share)": 0.26286509040333794,
+   "pose change goes past its final pose (share)": 0.8400556328233658,
+   "face holds its pose while the words run (share of speech frames)": 0.06289010033973295,
+   "left/right asymmetry in use (share of expressive frames)": 0.0,
+   "blinks at phrase starts and ends (share of blinks)": 0.3121951219512195,
+   "blinks: share expected by chance": 0.2653268581662878,
+   "blinks per minute": 25.41847489150651
+  },
+  "auto": {
+   "pose changes measured": 720,
+   "pose is there before the first word (share of phrases)": 0.7666666666666667,
+   "pose arrives, frames before the first word (median; negative = after)": 1.0,
+   "pose change takes (frames, 10% to 90%, median)": 6.0,
+   "pose change starts with a counter-move (share)": 0.4638888888888889,
+   "pose change goes past its final pose (share)": 0.45555555555555555,
+   "face holds its pose while the words run (share of speech frames)": 0.7632930394248242,
+   "left/right asymmetry in use (share of expressive frames)": 0.2655459538198067,
+   "blinks at phrase starts and ends (share of blinks)": 0.4766355140186916,
+   "blinks: share expected by chance": 0.2653268581662878,
+   "blinks per minute": 26.53440793552387
+  }
+ },
+ "reading_accuracy_isolated_lines": null,
+ "verdict": {
+  "R reading accuracy": {
+   "value": 0.6558265582655827,
+   "pass": true
+  },
+  "T lip sync r": {
+   "value": 0.5943814665890375,
+   "pass": true
+  },
+  "T accent lift": {
+   "value": 1.5764552616177274,
+   "pass": true
+  },
+  "L legibility vs actor": {
+   "value": 1.0381165919282513,
+   "pass": true
+  },
+  "S closer to films (share)": {
+   "value": 0.8571428571428571,
+   "pass": true
+  },
+  "S over-acting guard (max ratio to films)": {
+   "value": 1.7857974489261197,
+   "pass": true
+  },
+  "A jaw closed in silence": {
+   "value": 0.9978060269729625,
+   "pass": true
+  },
+  "A max head step": {
+   "value": 4.199999809265137,
+   "pass": true
+  }
+ },
+ "pass": true
+}

@@ -1,0 +1,10 @@
+# Iteration 5, fresh speakers (SPLITS.md): the one check against the targets, run once at commit 062641a (networks and app code frozen)
+# node train/eval_live.mjs app/models/emo_realtime.json,app/models/emo_realtime_b.json <feat> 1008,1016,1024,1032,1040,1048,1056,1064,1072
+{"lines":731,"frames":79326,"nonFinite":0,"played_right_after_0_5s":"0.381","after_1s":"0.533","at_end_of_line":"0.631","at_end_after_the_first_6_lines":"0.626","network_latest_answer_right":["0.454","0.586","0.679"],"maxHeadStepDeg":4.2,"jawClosedInSilence":1}
+played at the end of the line (rows = acted): NEU HAP SAD ANG FEA DIS
+NEU   79    5    8    0    6    9
+HAP   10   58    7    2   25   23
+SAD   13    2   66    0   28   15
+ANG    2    5    2  102    3   11
+FEA    2   12   16    3   77   15
+DIS    7    6   16   10    7   79

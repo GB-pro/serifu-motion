@@ -1,0 +1,10 @@
+# Iteration 5 on held-out set 1 (its fifth use, for comparison with run 4 only: eval_live_heldout_run4.txt), commit 062641a
+# node train/eval_live.mjs app/models/emo_realtime.json,app/models/emo_realtime_b.json <feat> 1083,...,1091
+{"lines":738,"frames":76061,"nonFinite":0,"played_right_after_0_5s":"0.336","after_1s":"0.447","at_end_of_line":"0.534","at_end_after_the_first_6_lines":"0.537","network_latest_answer_right":["0.391","0.491","0.573"],"maxHeadStepDeg":4.2,"jawClosedInSilence":1}
+played at the end of the line (rows = acted): NEU HAP SAD ANG FEA DIS
+NEU   36   10   10    7   21   24
+HAP    7   46    9   11   37   16
+SAD    7    2   62    0   30   25
+ANG    3    4    2  102    3   12
+FEA    3    3   24    2   73   21
+DIS    5    3   11   14   18   75
