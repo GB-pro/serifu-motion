@@ -124,3 +124,37 @@ Speakers looked at during this diagnosis, besides the validation speakers: lines
 (fresh set) and 1083 to 1087 (held-out set 1) were read in the exploratory scripts. Nothing was tuned on them, but
 they are no longer untouched. The Japanese corpus has now been used for diagnosis, so from here on it is a
 development check, not a clean test.
+
+## Iteration 6: more varied material. Roles fixed before anything was measured on it (2026-11-14, 08:20 JST)
+
+Aim: a reading that holds for other words, other recording conditions and other languages than those of CREMA-D.
+At the time of writing none of the material below has been run through any network.
+
+Material that can be reached from the working environment:
+
+- **Collection**: "Unified Multilingual Dataset of Emotional Human Utterances"
+  (github.com/michen00/unified_multilingual_dataset_of_emotional_human_utterances): 27 corpora, 9 languages, 16 kHz.
+  Its author states that all of them allow free non-commercial access; several are limited to non-commercial or
+  research use. Corpus codes below are those of the collection.
+- **FLEURS** (Google, CC BY 4.0): read sentences without acted emotion, many speakers, among others Japanese.
+- **JVNV** (Japanese emotional speech, CC BY-SA 4.0): not reachable yet; if it becomes reachable, speakers F1 and M1
+  are for training and F2 and M2 for the final check.
+- **声優統計コーパス** (Japanese, analysis only): already used for diagnosis, see above.
+
+Only lines whose label is one of the six classes (neutral, happy, sad, angry, fear, disgust) are used; other labels
+(surprise, calm, amused, ...) are left out. Sung files of `ravdess` are left out.
+
+| Role | Material |
+|---|---|
+| Final check, measured once after the networks are frozen, not looked at before | `ravdess` (English, 24 actors), `EmoDB` (German), `cafe` (Canadian French), `esd` speakers 0009 and 0010 (Mandarin) and 0019 and 0020 (English), the test split of FLEURS Japanese (share read as neutral), JVNV speakers F2 and M2 if reachable |
+| Development: every choice of method, constant and network | CREMA-D validation actors 1076 to 1082, `tess` (English), `oreau2` (French), `aesdd` (Greek), `urdu` (Urdu), `esd` speakers 0008 (Mandarin) and 0018 (English), the dev split of FLEURS Japanese, 声優統計コーパス |
+| Training, variant "open" (licences that allow use in the published app) | CREMA-D training actors, `jl-corpus` (CC0), the train split of FLEURS Japanese, JVNV speakers F1 and M1 if reachable |
+| Training, variant "all" (experiment: how much the other corpora add; not for the published app unless the owner of the project decides so) | "open" plus `esd` speakers 0001 to 0007 and 0011 to 0017, `MELD`, `EmoV-DB_sorted`, `LEGOv2`, `ShEMO`, `MESS`, `enterface_db`, `ekorpus`, `Emotional_EMA` |
+
+A corpus may be dropped from training if it does not help on the development material; nothing moves out of the
+final check, and nothing of the final check moves into training or development.
+
+Measures of the final check, with the app's own code at the frozen commit, six classes: a single line read on its
+own; all lines of a speaker as one long recording; live, the emotion played at the end of the line. For FLEURS the
+share of lines read as neutral. The networks of iteration 5 are measured on the same material at the same time, as
+the "before". The marks are written here before the freeze, from development results only.
