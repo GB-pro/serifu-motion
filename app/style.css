@@ -156,3 +156,10 @@ dialog h3 { margin: 0 0 4px; }
 .loadbox #startBtn { width: 100%; }
 .loadbox #startBtn:disabled { opacity: 0.45; cursor: default; }
 .small { font-size: 12px; }
+/* the properties panel always stays on screen: nothing in the studio may make the page wider than the window
+   (the long hint of the timeline bar used to push the panel out on narrower windows) */
+main, .view, .top { min-width: 0; }
+main { overflow: hidden; }
+.panel { flex-shrink: 0; }
+.tlbar { min-width: 0; flex-wrap: wrap; }
+.tlbar .hint { min-width: 0; flex: 1 1 200px; }
