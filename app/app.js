@@ -15,6 +15,7 @@ import { LiveSession } from './rt/live.js';
 
 const $ = (s) => document.querySelector(s);
 const AVATARS = Object.keys(DESIGNS);
+const isVideo = (f) => /video/.test(f.type) || /\.(mp4|mov|webm|m4v)$/i.test(f.name);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 class App {
@@ -123,14 +124,10 @@ class App {
       const sp = newSpeaker(i, f.name.replace(/\.[^.]+$/, '').slice(0, 24), AVATARS[i % AVATARS.length]);
       sp.audio16k = x;
       analyzeSpeaker(sp);
-      // a video of the speaker: the blink and the mouth are taken from the face in it, as the camera gives them in live mode
-      if (/video/.test(f.type) || /\.(mp4|mov|webm|m4v)$/i.test(f.name)) {
-        this.busy(t('faceTracking'));
-        try { sp.face = await trackVideoFace(f, sp.T, '', (u) => this.busy(`${t('faceTracking')} ${Math.round(u * 100)}%`)); } catch (e) { console.warn('face tracking', e); sp.face = null; }
-        this.busy(t('analyzing') + ' ' + f.name); await sleep(10);
-      }
       await this.process(sp);
       this.project.speakers.push(sp);
+      // a video of the speaker: its face is read in the background and applied when done (see watchFaces)
+      if (isVideo(f)) this.watchFaces(f, sp.T, [sp], null, 1);
     }
     this.padSpeakers();
     this.afterChange(); this.busy(null);
@@ -147,16 +144,6 @@ class App {
       this.stt = this.stt || new SpeechToText();
       segments = await this.stt.speakers(x, k, (m) => this.busy(m.what === 'speakers' ? `${t('spkLoading')} ${Math.round(m.loaded / 1e6)} / ${Math.round(m.total / 1e6)} MB` : `${t('spkSplitting')} ${Math.round(m.u * 100)}%`));
     } catch (e) { console.warn('speaker split fell back:', e); segments = diarize(x, k).segments; }
-    // a video of the conversation: follow each person's face (blink, mouth, where the head turns and the eyes look) and
-    // give each voice the face whose mouth moves while that voice speaks
-    let faceOf = new Array(k).fill(null);
-    if (/video/.test(file.type) || /\.(mp4|mov|webm|m4v)$/i.test(file.name)) {
-      const T = Math.max(1, Math.floor(x.length / SR * FPS));
-      try {
-        const tracks = await trackVideoFace(file, T, '', (u) => this.busy(`${t('faceTracking')} ${Math.round(u * 100)}%`), k);
-        if (tracks && tracks.length) { const m = matchFaces(tracks, segments, k, T); faceOf = m.map((i) => (i >= 0 ? tracks[i] : null)); console.info('faces', tracks.map((q) => q.x.toFixed(2)), 'match', m, matchFaces.last); }
-      } catch (e) { console.warn('face tracking', e); }
-    }
     const n0 = this.project.speakers.length;
     for (let j = 0; j < k; j++) {
       const a = new Float32Array(x.length);
@@ -166,14 +153,37 @@ class App {
       }
       const i = n0 + j;
       const sp = newSpeaker(i, `${t('speaker')} ${String.fromCharCode(65 + j)}`, AVATARS[i % AVATARS.length]);
-      sp.audio16k = a; if (faceOf[j]) sp.face = faceOf[j];
+      sp.audio16k = a;
       this.busy(t('generating') + ` (${j + 1}/${k})`); await sleep(30);
       await this.process(sp);
       this.project.speakers.push(sp);
     }
     this.padSpeakers();
     this.afterChange(); this.busy(null);
+    // a video of the conversation: each person's face is read in the background, and each voice gets the face whose
+    // mouth moves while that voice speaks
+    if (isVideo(file)) this.watchFaces(file, Math.max(1, Math.floor(x.length / SR * FPS)), this.project.speakers.slice(n0, n0 + k), segments, k);
     await this.understand(this.project.speakers.slice(n0), true);
+  }
+  // Reading the faces in a video takes a while (the face tracker runs on every picture), so it does not hold up the
+  // work: the speakers are made from the voice first, and the faces are applied when they are ready. One video at a time.
+  watchFaces(file, T, sps, segments, k) {
+    const info = $('#faceInfo'), show = (msg) => { info.textContent = msg || ''; info.hidden = !msg; };
+    this.faceQueue = (this.faceQueue || Promise.resolve()).then(async () => {
+      const t0 = performance.now();
+      show(t('faceTracking')); this.faceBusy = true;
+      try {
+        const res = await trackVideoFace(file, T, '', (u) => show(`${t('faceTracking')} ${Math.round(u * 100)}%`), k);
+        const tracks = k === 1 ? (res ? [res] : []) : res || [];
+        const faceOf = k === 1 ? [tracks[0] || null] : (tracks.length ? matchFaces(tracks, segments, k, T).map((i) => (i >= 0 ? tracks[i] : null)) : []);
+        console.info('faces', tracks.map((q) => q.x.toFixed(2)), 'took', ((performance.now() - t0) / 1000).toFixed(1), 's', trackVideoFace.last);
+        let any = false;
+        sps.forEach((sp, j) => { if (faceOf[j] && this.project.speakers.includes(sp)) { sp.face = faceOf[j]; this.redirect(sp); any = true; } });
+        if (any) { this.timeline.draw(); this.applyFrame(this.time); show(`${t('faceDone')} (${Math.round((performance.now() - t0) / 1000)} s)`); setTimeout(() => show(''), 6000); } else show('');
+      } catch (e) { console.warn('face tracking', e); show(''); }
+      this.faceBusy = false;
+    });
+    return this.faceQueue;
   }
   // A file that carries video: the video is shown small over the stage as a reference and follows the playhead.
   // It is only looked at: its picture is not copied into the project.
@@ -418,7 +428,9 @@ class App {
       this._dt = Math.min(0.1, last ? (now - last) / 1000 : 0); last = now;
       if (!$('#studio').hidden) {
         if (this.playing) { this.time = Math.min(this.duration(), this.ac.currentTime - this.startAt); this.applyFrame(this.time); this.timeline.setTime(this.time); this.clock(); }
-        this.stage.render();
+        // while a video's faces are being read and nothing plays, the stage is drawn less often: the face tracker and
+        // the drawing share the computer, and the reading finishes much sooner this way
+        if (this.playing || !this.faceBusy || now - (this._lastDraw || 0) > 500) { this.stage.render(); this._lastDraw = now; }
       } else if (this.liveStage) this.liveTick(now);
       requestAnimationFrame(step);
     };

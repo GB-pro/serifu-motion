@@ -162,7 +162,7 @@ export const DESIGNS = {
     name: 'Riku', label: { ja: 'リク', en: 'Riku' },
     skin: '#f3c79f', ears: false,
     head: { sx: 0.98, sy: 0.9, sz: 0.88, jaw: 0, cheek: 0, chin: 0, scale: 1.0, block: { p: 3.2, q: 5 } },
-    eyes: { r: 0.15, sep: 0.3, y: 0.0, depth: 0.5, iris: 0.97, color: '#1b120e', pupil: 0.55, lash: '#1b120e', lashW: 0.05, splay: 0.05, oval: 1.45, set: 0.6 },
+    eyes: { r: 0.17, sep: 0.31, y: 0.0, depth: 0.5, iris: 0.66, color: '#1b120e', pupil: 0.6, lash: '#1b120e', lashW: 0.06, splay: 0.05, oval: 1.35, set: 0.6, gaze: 1.35 }, // white around a big dark pupil, so where he looks reads
     brows: { color: '#4a2412', inner: 0.12, outer: 0.44, y: 0.3, arch: 0.04, tilt: 0.0, thick: 0.05 },
     nose: { y: -0.2, r: 0.04, hide: true },
     mouth: { y: -0.38, w: 0.5, lip: '#a85a50', lipT: 0.012, bow: 0.0, open: 1.05 },

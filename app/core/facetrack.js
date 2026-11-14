@@ -11,15 +11,15 @@ export const FACE_MOUTH = ['AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24
 // top of the head toward the left; gaze -1..1: x > 0 toward the right of the picture, y > 0 up)
 export const FACE_POSE = ['headYaw', 'headPitch', 'headRoll', 'gazeX', 'gazeY'];
 
-const trackers = new Map();
-async function getTracker(base, n = 1) {
-  if (trackers.has(n)) return trackers.get(n);
+const trackers = new Map(), best = new Map(); // best: the faster way to run (GPU or CPU) found for n faces on this computer
+async function getTracker(base, n = 1, delegate = 'GPU') {
+  const key = n + ':' + delegate; if (trackers.has(key)) return trackers.get(key);
   const abs = (p) => new URL(base + p, document.baseURI).href;
   const { FilesetResolver, FaceLandmarker } = await import(abs('vendor/mediapipe/vision_bundle.mjs'));
   const fs = await FilesetResolver.forVisionTasks(abs('vendor/mediapipe/wasm'));
-  const opts = (delegate) => ({ baseOptions: { modelAssetPath: abs('models/face_landmarker.task'), delegate }, runningMode: 'VIDEO', numFaces: n, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true });
-  let tr; try { tr = await FaceLandmarker.createFromOptions(fs, opts('GPU')); } catch (e) { tr = await FaceLandmarker.createFromOptions(fs, opts('CPU')); }
-  trackers.set(n, tr); return tr;
+  const opts = (d) => ({ baseOptions: { modelAssetPath: abs('models/face_landmarker.task'), delegate: d }, runningMode: 'VIDEO', numFaces: n, outputFaceBlendshapes: true, outputFacialTransformationMatrixes: true });
+  let tr; try { tr = await FaceLandmarker.createFromOptions(fs, opts(delegate)); } catch (e) { if (delegate === 'CPU') throw e; delegate = 'CPU'; tr = await FaceLandmarker.createFromOptions(fs, opts('CPU')); }
+  const r = { tr, delegate, stamp: 0 }; trackers.set(key, r); trackers.set(n + ':' + delegate, r); return r;
 }
 
 const R2D = 180 / Math.PI, clamp = (x, a, b) => Math.min(b, Math.max(a, x));
@@ -46,14 +46,21 @@ export async function trackVideoFace(file, T, base = '', onProgress = null, face
   try {
     await new Promise((ok, no) => { v.onloadeddata = ok; v.onerror = () => no(new Error('not a video')); v.src = url; });
     if (!v.videoWidth) return null; // sound only
-    const cam = await getTracker(base, faces);
+    // the tracker runs on the graphics chip when it can; on some computers (a weak graphics chip, or none) the processor
+    // is faster, so after a few pictures the other way is tried once and the faster one is kept
+    let cam = await getTracker(base, faces, trackVideoFace.cpu ? 'CPU' : best.get(faces) || 'GPU'), trial = null, costA = 0, nLook = 0;
     const NM = FACE_MOUTH.length, NP = FACE_POSE.length;
     const dets = new Array(T).fill(null), got = new Uint8Array(T);
-    let stamp = 0;
+    let cost = 0; // cost: how long the tracker takes for one picture (ms)
     const look = (time) => {
       const t = Math.round(time * FPS); if (t < 0 || t >= T || got[t]) return;
       got[t] = 1;
-      let r = null; try { r = cam.detectForVideo(v, (stamp += 34)); } catch (e) { /* this picture is skipped */ }
+      let r = null; const t0 = performance.now(); try { r = cam.tr.detectForVideo(v, (cam.stamp += 34)); } catch (e) { /* this picture is skipped */ }
+      const dt = performance.now() - t0; cost = cost ? 0.8 * cost + 0.2 * dt : dt; nLook++;
+      if (!best.has(faces) && !trial && nLook === 8 && cam.delegate === 'GPU' && cost > 30) {
+        trial = getTracker(base, faces, 'CPU').then((c) => { costA = cost; cam = c; cost = 0; nLook = 100; }).catch(() => best.set(faces, 'GPU'));
+      } else if (trial && nLook === 108) { if (cost > costA) { getTracker(base, faces, 'GPU').then((g) => { cam = g; cost = costA; }); best.set(faces, 'GPU'); } else best.set(faces, 'CPU'); }
+      else if (!best.has(faces) && nLook === 8 && !trial) best.set(faces, cam.delegate);
       if (!r || !r.faceBlendshapes || !r.faceBlendshapes.length) return;
       dets[t] = r.faceBlendshapes.map((fb, i) => {
         const bs = {}; for (const c of fb.categories) bs[c.categoryName] = c.score;
@@ -67,7 +74,9 @@ export async function trackVideoFace(file, T, base = '', onProgress = null, face
     // first pass: play it through at double speed and look at every picture the browser hands over
     if (v.requestVideoFrameCallback) await new Promise((done) => {
       let over = false; const end = () => { if (!over) { over = true; done(); } }; v.onended = end; v.onerror = end;
-      const cb = (now, meta) => { look(meta.mediaTime); onProgress && onProgress(0.5 * Math.min(1, meta.mediaTime / dur)); if (!v.ended && meta.mediaTime < dur - 0.05) v.requestVideoFrameCallback(cb); else end(); };
+      // the playback runs as fast as the tracker can look at every second picture: much faster than seeking to the
+      // missed ones afterwards (each seek decodes the video again from the last key picture)
+      const cb = (now, meta) => { look(meta.mediaTime); if (cost) v.playbackRate = Math.max(0.1, Math.min(2, (2 / FPS) / (cost / 1000) * 0.9)); onProgress && onProgress(0.5 * Math.min(1, meta.mediaTime / dur)); if (!v.ended && meta.mediaTime < dur - 0.05) v.requestVideoFrameCallback(cb); else end(); };
       v.requestVideoFrameCallback(cb); v.playbackRate = 2; v.play().catch(end);
     });
     v.pause(); v.onended = null;
@@ -95,7 +104,7 @@ export async function trackVideoFace(file, T, base = '', onProgress = null, face
         tr.seen[t] = 1; tr.blink[t] = f.blink; tr.mouth.set(f.mouth, t * NM); tr.pose.set(f.pose, t * NP);
       }
     }
-    trackVideoFace.last = { looked: got.reduce((x, y) => x + y, 0), found: tracks.reduce((s, tr) => s + tr.seen.reduce((x, y) => x + y, 0), 0) }; // for the tests
+    trackVideoFace.last = { cost: Math.round(cost), delegate: cam.delegate, looked: got.reduce((x, y) => x + y, 0), found: tracks.reduce((s, tr) => s + tr.seen.reduce((x, y) => x + y, 0), 0) }; // for the tests
     const out = [];
     for (const tr of tracks) {
       const { seen, blink, mouth, pose } = tr;

@@ -606,8 +606,9 @@ export class Character {
     const ap = this.eyeAp;
     for (const e of this.eyes) {
       // converge the eyes on the viewer (the sockets are splayed outward with the skull)
-      e.ball.rotation.y = gx * 0.36 - e.s * e.splay * 0.92;
-      e.ball.rotation.x = -gy * 0.3;
+      const gg = this.d.eyes.gaze ?? 1; // eyes that are mostly pupil need a larger turn to read
+      e.ball.rotation.y = gx * 0.36 * gg - e.s * e.splay * 0.92;
+      e.ball.rotation.x = -gy * 0.3 * gg;
       e.g.scale.setScalar(eyeS);
       // iris / pupil size: rebuild the cap on the eyeball (cheap) so it always lies on the sphere
       const ik = Math.round(irisS * 50);
