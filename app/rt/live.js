@@ -2,13 +2,18 @@
 // camera (MediaPipe Face Landmarker) drives ONLY blinks and mouth shape.
 import { LiveEmo } from '../core/generator.js';
 import { visemesFromCamera } from '../core/animate.js';
-import { K, IDX, IDS, blendshapesToAU } from '../core/au.js';
+import { K, IDX, IDS, EMOS, blendshapesToAU } from '../core/au.js';
+import { LineListener } from './listener.js';
 
 const WORKLET = `class Tap extends AudioWorkletProcessor{process(i){const c=i[0];if(c&&c[0])this.port.postMessage(c[0].slice(0));return true}}registerProcessor('sm-tap',Tap);`;
 const CAM_MOUTH = ['AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24', 'AU28'];
 
 export class LiveSession {
-  constructor({ rtModel, rtExtra = [], onFrame, onStatus, video, base = './', profile = null, style = 'anime' }) {
+  // delay (seconds, 0 = none) with meaning = { transcribe, understand }: the character plays that much later than the
+  // voice, and what is said in the meantime is understood so that the feeling of the words is on the face in time
+  constructor({ rtModel, rtExtra = [], onFrame, onStatus, video, base = './', profile = null, style = 'anime', delay = 0, meaning = null, onHeard = null }) {
+    this.delay = meaning ? delay : 0; this.hold = []; this.heldN = 0; this.played = 0; this.marks = []; this.mark = null;
+    if (this.delay > 0) this.listener = new LineListener({ ...meaning, maxAge: this.delay, onText: (text) => onHeard && onHeard({ text }), onMark: (m) => { this.marks.push(m); if (this.marks.length > 40) this.marks.shift(); onHeard && onHeard(m); } });
     this.rtModel = rtModel; this.rtExtra = rtExtra; this.onFrame = onFrame; this.onStatus = onStatus || (() => {});
     this.profile = profile; this.style = style;
     this.video = video; this.base = base;
@@ -60,12 +65,24 @@ export class LiveSession {
       this.acc += buf[i]; this.accN++; this.phase += 1;
       if (this.phase >= this.ratio) { out.push(this.acc / this.accN); this.acc = 0; this.accN = 0; this.phase -= this.ratio; }
     }
-    const x = Float32Array.from(out);
+    const x = Float32Array.from(out), au = this.faceSeen ? this.camAU : null;
+    if (!(this.delay > 0)) return this._perform(x, au);
+    // with a delay: the listener hears it now, the performer gets it (and the face the camera saw with it) later
+    this.listener.push(x); this.hold.push({ x, au }); this.heldN += x.length;
+    while (this.hold.length && this.heldN - this.hold[0].x.length >= this.delay * 16000) {
+      const h = this.hold.shift(); this.heldN -= h.x.length;
+      // the feeling known for this stretch of sound; a piece that was cut while the speaker went on keeps its feeling until the next one is known
+      const at = this.played + h.x.length / 2; let m = null; for (const k of this.marks) if (at >= k.start && (at < k.end || (k.open && at < k.end + 3 * 16000))) m = k;
+      if (m !== this.mark) { this.mark = m; this.emo.force(m ? m.emo : null, m ? m.intensity : 0); }
+      this.played += h.x.length; this._perform(h.x, h.au);
+    }
+  }
+  _perform(x, au) {
+    this.lateAU = au;
     if (this.recording) this.recording.audio.push(x);
     // The camera gives two things only: the mouth shape and the blink. In the anime style the mouth shape goes INTO
     // the performer (so the emotion still shapes the lips and accents still open the jaw); the blink replaces the
     // performer's own blinks while a face is visible.
-    const au = this.faceSeen ? this.camAU : null;
     const camVis = au && this.useCamMouth ? visemesFromCamera(au, this.emo.meta, this._vis || (this._vis = {})) : null;
     this.emo.setAutoBlink(!(au && this.useCamBlink));
     for (const f of this.emo.push(x, camVis)) {
@@ -76,7 +93,7 @@ export class LiveSession {
   setProfile(profile) { this.profile = profile; if (this.emo) this.emo.setProfile(profile); }
   setStyle(style) { this.style = style; if (this.emo) this.emo.setStyle(style); }
   _compose(src) {
-    const y = Float32Array.from(src), au = this.faceSeen ? this.camAU : null;
+    const y = Float32Array.from(src), au = this.delay > 0 ? this.lateAU : this.faceSeen ? this.camAU : null;
     if (au) {
       if (this.useCamBlink) y[IDX.AU45] = Math.max(0, Math.min(1, (au.AU45 - 0.12) / 0.55)); // the tracker reports about 0.12 with open eyes
       if (this.useCamMouth && this.style === 'natural') { const v = visemesFromCamera(au, this.emo.meta, this._vis2 || (this._vis2 = {})); for (const id of CAM_MOUTH) y[IDX[id]] = Math.min(1, v[id]); }
@@ -102,7 +119,9 @@ export class LiveSession {
       } catch (e) { this.faceSeen = false; }
     }
     const y = this._compose(this.lastFrame.y);
-    return { y, emo: this.lastFrame.emo, voiced: this.lastFrame.voiced };
+    // the meter shows what is being played: the feeling of the words while one is known, otherwise the reading of the voice
+    const emo = this.mark ? EMOS.map((e) => (e === this.mark.emo ? Math.min(1, this.mark.intensity) : 0)) : this.lastFrame.emo;
+    return { y, emo, voiced: this.lastFrame.voiced };
   }
   startRecording() { this.recording = { audio: [], frames: [], emo: [] }; }
   stopRecording() {

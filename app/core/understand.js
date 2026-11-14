@@ -10,6 +10,7 @@ import { EMOS } from './au.js';
 
 export const API_URL = 'https://api.anthropic.com/v1/messages';
 export const DEFAULT_MODEL = 'claude-opus-5-5';
+export const LIVE_MODEL = 'claude-haiku-5-5'; // live: the answer has to be back within the delay, so a faster model reads the lines
 const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
 const SYSTEM = `You direct the facial acting of animated characters. You get the lines of a dialogue as JSON: for each line its index "i", the speaker, start and end time in seconds, and the text. The text comes from automatic speech recognition, so it can contain wrong or missing words; read through such errors and judge from the context of the whole dialogue what was meant.

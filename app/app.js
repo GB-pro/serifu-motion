@@ -2,9 +2,10 @@
 import { EmoGenerator } from './core/generator.js';
 import { IDS, K, EMOS, CHANNELS, GROUPS, frameToObj } from './core/au.js';
 import { SR, FPS } from './core/features.js';
+const SPEECH_LANGS = { ja: '日本語', en: 'English', zh: '中文', ko: '한국어', es: 'Español', fr: 'Français', de: 'Deutsch', it: 'Italiano', pt: 'Português', ru: 'Русский', id: 'Bahasa Indonesia', th: 'ไทย', vi: 'Tiếng Việt', hi: 'हिन्दी', ar: 'العربية' };
 import { trackVideoFace } from './core/facetrack.js';
 import { SpeechToText, speechLines } from './core/transcribe.js';
-import { understandRemote, understandLocal, toOverrides, DEFAULT_MODEL } from './core/understand.js';
+import { understandRemote, understandLocal, toOverrides, DEFAULT_MODEL, LIVE_MODEL } from './core/understand.js';
 import { newSpeaker, analyzeSpeaker, readSpeaker, directSpeaker, isDirected, upgradeTrack, diarize, Composer, insertGesture, exportEmo, exportCSV, GESTURES, STYLES } from './core/project.js';
 import { DESIGNS } from './avatar/characters.js';
 import { Stage } from './ui/stage.js';
@@ -161,13 +162,14 @@ class App {
     else { if (!v.paused) v.pause(); if (force || Math.abs(v.currentTime - t2) > 0.02) v.currentTime = t2; }
   }
   // ---------- what is said: speech to text, then the meaning of the lines decides the feelings ----------
-  aiSettings() { const g = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } }; return { on: g('sm.ai.on') !== '0', key: g('sm.ai.key'), model: g('sm.ai.model') || DEFAULT_MODEL }; }
+  aiSettings() { const g = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } }; return { on: g('sm.ai.on') !== '0', key: g('sm.ai.key'), model: g('sm.ai.model') || DEFAULT_MODEL, lang: g('sm.ai.lang') }; }
   bindAI() {
     const dlg = $('#aiDlg'), put = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch { /* private mode: kept for this visit only */ } };
-    $('#aiBtn').onclick = () => { const s = this.aiSettings(); $('#aiOn').checked = s.on; $('#aiKey').value = s.key; $('#aiModel').value = s.model; dlg.showModal(); };
+    $('#aiBtn').onclick = () => { const s = this.aiSettings(); $('#aiOn').checked = s.on; $('#aiKey').value = s.key; $('#aiModel').value = s.model; $('#aiLang').value = s.lang; dlg.showModal(); };
+    { const sl = $('#aiLang'); sl.add(new Option(t('langAuto'), '')); for (const [k, v] of Object.entries(SPEECH_LANGS)) sl.add(new Option(v, k)); }
     dlg.addEventListener('close', () => {
       if (dlg.returnValue !== 'apply') return;
-      put('sm.ai.on', $('#aiOn').checked ? '' : '0'); put('sm.ai.key', $('#aiKey').value.trim()); put('sm.ai.model', $('#aiModel').value.trim() === DEFAULT_MODEL ? '' : $('#aiModel').value.trim());
+      put('sm.ai.on', $('#aiOn').checked ? '' : '0'); put('sm.ai.key', $('#aiKey').value.trim()); put('sm.ai.lang', $('#aiLang').value); put('sm.ai.model', $('#aiModel').value.trim() === DEFAULT_MODEL ? '' : $('#aiModel').value.trim());
     });
     $('#readBtn').onclick = () => this.understand(this.project.speakers, false);
   }
@@ -183,7 +185,7 @@ class App {
       const jobs = speakers.map((sp) => ({ sp, lines: speechLines(sp) })), total = jobs.reduce((s, j) => s + j.lines.length, 0); let k = 0;
       for (const j of jobs) {
         this.stt.forget(); j.sp.script = [];
-        for (const l of j.lines) { this.busy(`${t('sttLine')} (${++k}/${total})`); const r = await this.stt.line(l.samples); if (r.text) j.sp.script.push({ start: l.start, end: l.end, text: r.text, lang: r.lang, conf: +r.conf.toFixed(2) }); }
+        for (const l of j.lines) { this.busy(`${t('sttLine')} (${++k}/${total})`); const r = await this.stt.line(l.samples, set.lang || undefined); if (r.text) j.sp.script.push({ start: l.start, end: l.end, text: r.text, lang: r.lang, conf: +r.conf.toFixed(2) }); }
       }
       // the whole dialogue in the order it is spoken, so each line is understood in the light of the others
       const all = this.project.speakers.flatMap((sp) => (sp.script || []).map((l) => ({ ...l, sp, speaker: sp.name }))).sort((a, b) => a.start - b.start);
@@ -426,7 +428,22 @@ class App {
   }
   async startLive() {
     try {
-      this.live = new LiveSession({ rtModel: this.rtModel, rtExtra: this.rtExtra, video: $('#camPreview'), onStatus: () => {}, profile: this.acting[$('#liveAvatar').value], style: $('#liveStyle') ? $('#liveStyle').value : 'anime' });
+      // with "meaning" on, the character plays a few seconds late and the words spoken in the meantime decide the feeling
+      let meaning = null; const set = this.aiSettings(), heard = $('#liveHeard'); heard.textContent = '';
+      if ($('#liveMeaning').checked) {
+        try {
+          this.stt = this.stt || new SpeechToText();
+          this.busy(t('sttLoading')); await this.stt.load((a, b) => this.busy(`${t('sttLoading')} ${Math.round(a / 1e6)} / ${Math.round(b / 1e6)} MB`)); this.stt.forget();
+          const model = set.model === DEFAULT_MODEL ? LIVE_MODEL : set.model; let failed = 0;
+          const lang = set.lang || (SPEECH_LANGS[getLang()] ? getLang() : undefined); // a few words are too little to tell the language from, so live starts from the chosen one (or the language of the page)
+          meaning = { transcribe: (x) => this.stt.line(x, lang), understand: async (lines) => {
+            if (set.key && failed < 3) { try { const r = await understandRemote(lines, { key: set.key, model }); failed = 0; return r; } catch (e) { failed++; console.warn('understanding', e); heard.dataset.why = `${t('aiFailed')} (${t('aiErr_' + e.code)})`; } }
+            return understandLocal(lines);
+          } };
+        } catch (e) { console.warn(e); heard.textContent = `${t('sttFailed')} (${e.message})`; } finally { this.busy(null); }
+      }
+      const onHeard = (m) => { heard.textContent = (m.emo ? `${t(m.emo)} ${Math.round(m.intensity * 100)}% · ` : '') + m.text + (heard.dataset.why ? ` · ${heard.dataset.why}` : ''); };
+      this.live = new LiveSession({ rtModel: this.rtModel, rtExtra: this.rtExtra, video: $('#camPreview'), onStatus: () => {}, profile: this.acting[$('#liveAvatar').value], style: $('#liveStyle') ? $('#liveStyle').value : 'anime', delay: +$('#liveDelay').value, meaning, onHeard });
       this.live.useCamMouth = $('#camMouth').checked; this.live.useCamBlink = $('#camBlink').checked;
       await this.live.start();
       $('#liveStart').textContent = t('stopLive'); $('#liveRec').disabled = false;

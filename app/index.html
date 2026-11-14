@@ -89,6 +89,9 @@
     <button class="btn" id="liveRec" data-i18n="record" disabled></button>
     <label class="mini"><input type="checkbox" id="camMouth" checked> <span data-i18n="camMouth"></span></label>
     <label class="mini"><input type="checkbox" id="camBlink" checked> <span data-i18n="camBlink"></span></label>
+    <label class="mini"><input type="checkbox" id="liveMeaning" checked> <span data-i18n="liveMeaning"></span></label>
+    <label class="mini"><span data-i18n="liveDelay"></span> <select id="liveDelay"><option value="4">4 s</option><option value="6">6 s</option><option value="8" selected>8 s</option><option value="10">10 s</option></select></label>
+    <p class="note" id="liveHeard"></p>
     <p class="note" data-i18n="liveNote"></p>
   </div>
 </section>
@@ -113,6 +116,7 @@
     <label class="check"><input type="checkbox" id="aiOn"> <span data-i18n="aiOn"></span></label>
     <label class="field"><span data-i18n="aiKey"></span><input type="password" id="aiKey" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"></label>
     <p class="dim" data-i18n="aiKeyHint"></p>
+    <label class="field"><span data-i18n="speechLang"></span><select id="aiLang"></select></label>
     <label class="field"><span data-i18n="aiModel"></span><input type="text" id="aiModel" autocomplete="off" spellcheck="false"></label>
     <div class="row end">
       <button value="cancel" class="ghost" data-i18n="cancel"></button>

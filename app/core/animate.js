@@ -663,6 +663,12 @@ export class LiveDirector {
     this.autoBlink = true; // false while a camera supplies the blinks
   }
   setProfile(profile) { this.prof = { ...DEFAULT_PROFILE, ...(profile || {}) }; this.perf.prof = this.prof; }
+  // The feeling is known from the words (live with a delay: the line was understood before it is played). While one is
+  // set, the director plays it instead of its own reading of the voice; null hands the choice back to the voice.
+  force(emo, inten = 0.7) {
+    const was = this.forced; this.forced = emo ? { emo, inten: clamp(inten, 0.2, 1.3) } : null;
+    if (this.forced && this.inPhrase && (!was || was.emo !== emo || Math.abs(was.inten - this.forced.inten) > 0.12)) { if (emo !== this.emo) this._blink(ACTING[emo].blinkDur); this._pose(emo, this.forced.inten * this.exaggeration); }
+  }
   _blink(dur) { if (this.autoBlink) this.perf.blink(dur); }
   emoDisplay() { const p = Array.from(this.accN > 3 ? this.recent : this.ctx); const s = p.reduce((a, b) => a + b, 0) || 1; return p.map((v) => v / s); }
   // the feeling of the line as far as it has been heard: the causal network's latest answer (it already sums up what
@@ -703,9 +709,9 @@ export class LiveDirector {
       if (this.sil >= NEW_LINE_GAP) {
         // a new thought: blink, eyes back to the listener, take a first reading of the feeling and commit to a pose
         this.inPhrase = true; this.phraseT = 0; this.acc.fill(0); this.accN = 0; this.eMean = 0; this.fMean = 0; this.eN = 0; this.auxI = 0.5; this.auxN = 0;
-        const d = this._decide();
+        const d = this.forced ? { emo: this.forced.emo, conf: 1 } : this._decide();
         perf.lookAt(0, 0); if (d.emo !== 'FEA' || r() < 0.4) this._blink(ACTING[d.emo].blinkDur);
-        this._pose(d.emo, clamp(0.45 + 0.5 * d.conf, 0.4, 0.8) * this.exaggeration, { fresh: true });
+        this._pose(d.emo, (this.forced ? this.forced.inten : clamp(0.45 + 0.5 * d.conf, 0.4, 0.8)) * this.exaggeration, { fresh: true });
         this.lookedAway = false;
       } else {
         // The same line goes on after a short pause (a breath, a stop consonant, a hesitation). What has been heard of
@@ -724,7 +730,7 @@ export class LiveDirector {
       // Nothing is known about a line before it is spoken, and the network knows more with every syllable (on unseen
       // speakers about 45% right after 0.3 s, 57% after 1 s, 63% by the end of the line). So the first pose is a guess
       // from the context, and the reading is taken again at short intervals; the pose follows once it clearly differs.
-      if (voiced && (this.accN === 8 || this.accN === 16 || (this.accN > 16 && (this.accN - 16) % 12 === 0))) {
+      if (!this.forced && voiced && (this.accN === 8 || this.accN === 16 || (this.accN > 16 && (this.accN - 16) % 12 === 0))) {
         const d = this._reread(), cur = d.p[E[this.emo]];
         const inten = clamp((0.5 + 0.4 * this.auxI + 0.25 * (clamp(0.5 + 0.35 * this.eMean, 0, 1) - 0.5)) * clamp(0.55 + 0.9 * d.margin + 0.35 * d.conf, 0.55, 1), 0.35, 1.05) * this.exaggeration;
         if (d.emo !== this.emo && d.conf - cur > this.switchMargins[this.accN === 8 ? 0 : 1]) { this._blink(ACTING[d.emo].blinkDur); this._pose(d.emo, inten); }

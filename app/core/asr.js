@@ -44,10 +44,11 @@ export class Transcriber {
       if (best === EOT) break;
       ids.push(best);
       if (ids.length >= 12) { const t = ids.slice(-4).join(','), u = ids.slice(-8, -4).join(','), v = ids.slice(-12, -8).join(','); if (t === u && u === v) { ids.length -= 8; break; } } // going round in circles
+      { let rep = 0; for (let n = 5; n <= 40 && 2 * n <= ids.length; n++) { let same = true; for (let j = 1; j <= n; j++) if (ids[ids.length - j] !== ids[ids.length - j - n]) { same = false; break; } if (same) { rep = n; break; } } if (rep) { ids.length -= rep; break; } } // the same sentence a second time
       lg = await step([best], off++);
     }
     const bytes = []; for (const id of ids) { const b = this.tokens[id]; if (b) for (const c of b) bytes.push(c); }
-    const text = new TextDecoder('utf-8').decode(Uint8Array.from(bytes)).replace(/�/g, '').trim();
+    const text = new TextDecoder('utf-8').decode(Uint8Array.from(bytes)).replace(/�/g, '').replace(/\([^)]*\)|\[[^\]]*\]|（[^）]*）|[♪♫]/g, '').trim(); // without the model's notes on sounds that are not speech, like (music)
     return { text, lang, conf: ids.length ? sum / (ids.length + 1) : 0 };
   }
 }

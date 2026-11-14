@@ -202,6 +202,7 @@ export class LiveEmo {
   setProfile(profile) { this.dir.setProfile(profile); }
   // false while a camera supplies the blinks (the director then stops placing its own)
   setAutoBlink(on) { this.dir.autoBlink = !!on; }
+  force(emo, inten) { this.dir.force(emo, inten); } // the feeling known from the words (see LiveDirector.force)
   // camera mouth (rig-space viseme AUs) may replace the network's mouth in the anime performer
   push(samples16k, camVis = null) {
     const frames = this.feat.push(samples16k);
