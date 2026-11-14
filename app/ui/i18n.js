@@ -6,6 +6,7 @@ const S = {
   live: { ja: 'ライブ', en: 'Live', zh: '实时', ko: '라이브', es: 'En vivo', fr: 'Direct', de: 'Live' },
   speakers: { ja: '話者', en: 'Speakers', zh: '说话人', ko: '화자', es: 'Hablantes', fr: 'Locuteurs', de: 'Sprecher' },
   addAudio: { ja: '話者ごとの音声を追加', en: 'Add audio per speaker', zh: '按说话人添加音频', ko: '화자별 음성 추가', es: 'Añadir audio por hablante', fr: 'Ajouter un audio par locuteur', de: 'Audio pro Sprecher hinzufügen' },
+  refVideo: { ja: '参考動画', en: 'Reference video', zh: '参考视频', ko: '참고 영상', es: 'Vídeo de referencia', fr: 'Vidéo de référence', de: 'Referenzvideo' },
   addMixed: { ja: '会話音声を話者分離して追加', en: 'Add dialogue (auto speaker split)', zh: '添加对话（自动分离说话人）', ko: '대화 음성 추가 (화자 자동 분리)', es: 'Añadir diálogo (separación automática)', fr: 'Ajouter un dialogue (séparation auto)', de: 'Dialog hinzufügen (automatische Trennung)' },
   numSpeakers: { ja: '話者数', en: 'Speakers', zh: '人数', ko: '화자 수', es: 'Nº hablantes', fr: 'Nb locuteurs', de: 'Anzahl' },
   demo: { ja: 'デモを読み込む', en: 'Load demo', zh: '加载示例', ko: '데모 불러오기', es: 'Cargar demo', fr: 'Charger la démo', de: 'Demo laden' },

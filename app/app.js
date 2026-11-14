@@ -97,7 +97,7 @@ class App {
     for (const f of files) {
       this.busy(t('analyzing') + ' ' + f.name);
       await sleep(30);
-      const x = await this.decode(f);
+      const x = await this.decode(f); this.setReference(f);
       const i = this.project.speakers.length;
       const sp = newSpeaker(i, f.name.replace(/\.[^.]+$/, '').slice(0, 24), AVATARS[i % AVATARS.length]);
       sp.audio16k = x;
@@ -111,7 +111,7 @@ class App {
     if (!file) return;
     this.pushUndo();
     this.busy(t('analyzing')); await sleep(30);
-    const x = await this.decode(file);
+    const x = await this.decode(file); this.setReference(file);
     const { segments } = diarize(x, k);
     const n0 = this.project.speakers.length;
     for (let j = 0; j < k; j++) {
@@ -129,6 +129,24 @@ class App {
     }
     this.padSpeakers();
     this.afterChange(); this.busy(null);
+  }
+  // A file that carries video: the video is shown small over the stage as a reference and follows the playhead.
+  // It is only looked at: its picture is not copied into the project.
+  setReference(file) {
+    if (!file || !(/^video\//.test(file.type) || /\.(mp4|mov|webm|m4v)$/i.test(file.name))) return;
+    const v = $('#refVideo'); if (this.refUrl) URL.revokeObjectURL(this.refUrl);
+    this.refUrl = URL.createObjectURL(file); v.src = this.refUrl; v.muted = true; v.playsInline = true;
+    v.onloadedmetadata = () => { if (!v.videoWidth) { this.clearReference(); return; } $('#refBox').hidden = false; $('#refShow').hidden = true; this.syncReference(true); }; // a file with sound only has no picture
+    v.onerror = () => this.clearReference();
+    $('#refHide').onclick = () => { $('#refBox').hidden = true; $('#refShow').hidden = false; };
+    $('#refShow').onclick = () => { $('#refBox').hidden = false; $('#refShow').hidden = true; this.syncReference(true); };
+  }
+  clearReference() { const v = $('#refVideo'); v.pause(); v.removeAttribute('src'); v.load(); if (this.refUrl) URL.revokeObjectURL(this.refUrl); this.refUrl = null; $('#refBox').hidden = true; $('#refShow').hidden = true; }
+  syncReference(force) {
+    const v = $('#refVideo'); if (!this.refUrl || !v.videoWidth || $('#refBox').hidden) return;
+    const t2 = Math.min(this.time, (v.duration || 1e9) - 0.05);
+    if (this.playing) { if (v.paused) { v.currentTime = t2; v.play().catch(() => {}); } else if (Math.abs(v.currentTime - t2) > 0.25) v.currentTime = t2; }
+    else { if (!v.paused) v.pause(); if (force || Math.abs(v.currentTime - t2) > 0.02) v.currentTime = t2; }
   }
   async process(sp) {
     analyzeSpeaker(sp); await sleep(10);
@@ -262,10 +280,11 @@ class App {
     this.src.onended = () => { if (this.playing && this.ac.currentTime - this.startAt >= this.duration() - 0.1) { this.playing = false; $('#play').textContent = '▶'; this.onEnded && this.onEnded(); } };
     $('#play').textContent = '❚❚';
   }
-  pause() { if (this.src) { this.src.onended = null; try { this.src.stop(); } catch (e) { /* already stopped */ } } this.playing = false; $('#play').textContent = '▶'; }
+  pause() { const rv = $('#refVideo'); if (rv && !rv.paused) rv.pause(); if (this.src) { this.src.onended = null; try { this.src.stop(); } catch (e) { /* already stopped */ } } this.playing = false; $('#play').textContent = '▶'; }
   seek(t2) { const was = this.playing; if (was) this.pause(); this.time = Math.min(t2, this.duration()); this.applyFrame(this.time); this.timeline.setTime(this.time); this.clock(); if (was) this.play(); }
   clock() { const m = Math.floor(this.time / 60), s = this.time - m * 60; $('#clock').textContent = `${m}:${s < 10 ? '0' : ''}${s.toFixed(1)}`; }
   applyFrame(time) {
+    this.syncReference();
     const fi = time * FPS, i0 = Math.floor(fi), u = fi - i0;
     this.project.speakers.forEach((sp, i) => {
       if (!sp.final) return;
