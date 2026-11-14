@@ -64,6 +64,7 @@ export const DEFAULT_SHAPE = {
   noseForm: null, // a nose of the character's own, sculpted on the form in place of the published one: { r: [wide, tall, deep] of the tip, out, k, bridge: { up, r: [at the tip, at the top], in, k } } (cm)
   mouthCurve: 0, mouthFlat: 0, mouthIn: 0, mouthRelief: 1, // the corners of the mouth higher, and further out of the face (cm: the mouth unwrapped from the muzzle); the mouth set back into the form (cm); how much of the relief of the lips is kept
   calm: 0, // ironing passes on the movement of every expression shape: no folds beside the nose when the character smiles
+  calmBulge: 0, // further passes on only the part of each movement that goes out or in: the folds of a real face go, the size of the movement stays
   smooth: 0, noseSmooth: 0, relax: 0, // ironing passes: fine relief of the published head, the nose, ripples after the change of proportions
 };
 // ---- the head as a whole: a ball with the face in relief ----
@@ -440,6 +441,7 @@ export class Head {
     });
     if (sh.noseForm) this._noseFollows();
     if (sh.calm > 0) this._calm(sh.calm);
+    if (sh.calmBulge > 0) this._calmBulge(sh.calmBulge);
     this.w = new Float32Array(this.shapes.length); this._lastW = new Float32Array(this.shapes.length).fill(NaN);
     if (design.pose) { this.restPose = new Float32Array(this.shapes.length); for (const k in design.pose) { const i = base.index[k]; if (i !== undefined) this.restPose[i] = design.pose[k]; } this.w.set(this.restPose); }
     const g = (this.geometry = new THREE.BufferGeometry());
@@ -487,6 +489,30 @@ export class Head {
         for (const v of list) { const o = v * 3; D[o] = Q[o]; D[o + 1] = Q[o + 1]; D[o + 2] = Q[o + 2]; }
       }
       for (let j = 0; j < idx.length; j++) { const f = first[idx[j]] * 3; d[j * 3] = D[f]; d[j * 3 + 1] = D[f + 1]; d[j * 3 + 2] = D[f + 2]; }
+    }
+  }
+  // The published movements carry the folds of a real face (beside the nose in a smile, under the eyes). On a face this
+  // smooth they read as dents. A fold is a sudden change in how far the skin moves out or in, so only that part of each
+  // movement is smoothed, away from the lips and the eyes; how the skin slides along the surface stays as it is.
+  _calmBulge(passes) {
+    const n = this.base.n, first = this.first, rings = this.base.rings, P = this.rest, F = this.shape.form; this._iron(new Float32Array(0), 0, () => 1); const nb = this._nb;
+    const N = new Float32Array(n * 3), w = new Float32Array(n), A = new Float32Array(n), B = new Float32Array(n), A0 = new Float32Array(n), e = 0.2;
+    for (let i = 0; i < n; i++) { // "out" is taken from the smooth form of the head, not from the skin: on the lips and the lids the skin turns every way
+      const o = i * 3; let x = 0, y = 0, z = 1;
+      if (F) { const px = P[o], py = P[o + 1], pz = P[o + 2]; x = F.value(px + e, py, pz) - F.value(px - e, py, pz); y = F.value(px, py + e, pz) - F.value(px, py - e, pz); z = F.value(px, py, pz + e) - F.value(px, py, pz - e); }
+      else { x = P[o] - BALL_C[0]; y = P[o + 1] - BALL_C[1]; z = P[o + 2] - BALL_C[2]; }
+      const l = Math.hypot(x, y, z) || 1; N[o] = x / l; N[o + 1] = y / l; N[o + 2] = z / l;
+      w[i] = this._keep[i] * smooth(5, 13, rings[o]) * smooth(4, 14, Math.min(rings[o + 1], rings[o + 2]));
+    }
+    for (const s of this.shapes) {
+      const { idx, d } = s, list = []; A.fill(0);
+      for (let j = 0; j < idx.length; j++) { const v = first[idx[j]], o = v * 3; if (idx[j] === v) { A[v] = N[o] * d[j * 3] + N[o + 1] * d[j * 3 + 1] + N[o + 2] * d[j * 3 + 2]; if (this._keep[v] > 0) list.push(v); } }
+      if (!list.length) continue; A0.set(A);
+      for (let p = 0; p < passes; p++) {
+        for (const v of list) { const a = nb[v]; let x = 0; for (let k = 0; k < a.length; k++) x += A[a[k]]; B[v] = A[v] + (0.6 * w[v] / a.length) * (x - a.length * A[v]); }
+        for (const v of list) A[v] = B[v];
+      }
+      for (let j = 0; j < idx.length; j++) { const v = first[idx[j]], o = v * 3, da = A[v] - A0[v]; if (da) { d[j * 3] += N[o] * da; d[j * 3 + 1] += N[o + 1] * da; d[j * 3 + 2] += N[o + 2] * da; } }
     }
   }
   // With a nose of the character's own, the skin of the published nose lies on it like a film, and what the expression
@@ -736,8 +762,8 @@ export class Head {
     this.teethUpper = band(-show, tall, 0, true); this.root.add(this.teethUpper);
     this.teethLower = band(-(d.lowerShow ?? 0.42) * gm, -(d.lowerTall ?? 1.3) * gm, -0.14 * gm, false); this.teethLower.matrixAutoUpdate = false; this.root.add(this.teethLower);
     // the tongue: a flat round cushion on the floor of the mouth behind the lower band; it goes with the jaw
-    { const g = new THREE.SphereGeometry(1, 28, 18), p = g.attributes.position, ao = new Float32Array(p.count), rx = (d.tongueWide ?? 1.7) * gm, ry = 0.55 * gm, rz = 2.3 * gm, cy = fy[0] - 0.95 * gm, cz = front(0, fy[0]) - off - 0.3 * gm - rz;
-      for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); p.setXYZ(i, x * rx * (1 - 0.18 * z), cy + y * ry, cz + z * rz); ao[i] = 0.3 + 0.7 * smooth(-0.5, 0.9, z); }
+    { const g = new THREE.SphereGeometry(1, 28, 18), p = g.attributes.position, ao = new Float32Array(p.count), rx = (d.tongueWide ?? 1.7) * gm, ry = 0.45 * gm, rz = 1.8 * gm, cy = fy[0] - 1.05 * gm, cz = front(0, fy[0]) - off - 0.3 * gm - rz;
+      for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i); p.setXYZ(i, x * rx * (1 - 0.18 * z), cy + y * ry - 0.3 * gm * (1 - z), cz + z * rz); ao[i] = 0.3 + 0.7 * smooth(-0.5, 0.9, z); }
       g.setAttribute('ao', new THREE.BufferAttribute(ao, 1)); g.computeVertexNormals();
       this.tongue = new THREE.Mesh(g, occluded(new THREE.MeshPhysicalMaterial({ color: d.tongue || '#e8788a', roughness: 0.4, clearcoat: 0.35, clearcoatRoughness: 0.3 }), '#3a141c', 0.85));
       this.tongue.frustumCulled = false; this.tongue.receiveShadow = true; this.tongue.matrixAutoUpdate = false; this.root.add(this.tongue); }
@@ -754,7 +780,7 @@ export class Head {
     const ux = ty * ez - tz * ey, uy = tz * ex - tx * ez, uz = tx * ey - ty * ex; // up = forward x side
     m.set(ex, ux, tx, P[A], ey, uy, ty, P[A + 1], ez, uz, tz, P[A + 2], 0, 0, 0, 1); return m;
   }
-  _jawMoves() { const j = this.jaw; this._frame(this.cur, j.now); this.teethLower.matrix.multiplyMatrices(j.now, j.rest); this.teethLower.matrixWorldNeedsUpdate = true; this.tongue.matrix.copy(this.teethLower.matrix); this.tongue.matrixWorldNeedsUpdate = true; }
+  _jawMoves() { const j = this.jaw; this._frame(this.cur, j.now); this.teethLower.matrix.multiplyMatrices(j.now, j.rest); this.teethLower.matrixWorldNeedsUpdate = true; this.tongue.matrix.copy(this.teethLower.matrix); this.tongue.matrixWorldNeedsUpdate = true; if (this._pressIdx === undefined) this._pressIdx = ['mouthPress_L', 'mouthPress_R', 'mouthRollUpper', 'mouthClose'].map((k) => this.base.index[k]).filter((k) => k !== undefined); let pr = 0; for (const k of this._pressIdx) pr = Math.max(pr, this.w[k]); this.teethUpper.position.y = 0.6 * Math.min(1, pr); } // pressed lips: the upper band goes up behind the lip, so it cannot show through
   // A sculpted shape (hair, a hat) described on the published head: it is made into a mesh there and taken through the
   // character's proportions like everything else, so it fits whatever head the character has. With `own` the shape is
   // described on the character's own head instead (centimetres, the middle of the head at 0, 2.5, 1.5) and stays as it is.

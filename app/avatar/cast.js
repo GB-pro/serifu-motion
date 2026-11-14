@@ -12,9 +12,9 @@ function form(o = {}) { // the smooth form of the head, in centimetres on the pu
   f.ell([0, -1.6 - (o.drop ?? 0), 2.2], [8.0 * w * (o.jaw ?? 1), 5.2 * (o.long ?? 1), 8.3], { k: o.blend ?? 3.5 }); // cheeks, jaw and chin as one round box: the face is flat in front from the brow to the mouth
   return f;
 }
-const SHAPE = { smooth: 20, noseSmooth: 60, nostril: 150, noseFilm: 400, neckSmooth: 60, neckCalm: 80, reliefSmooth: 300, even: 100, relax: 30, calm: 30, relief: 0.6,
+const SHAPE = { smooth: 20, noseSmooth: 60, nostril: 150, noseFilm: 400, neckSmooth: 60, neckCalm: 80, reliefSmooth: 300, even: 100, relax: 30, calm: 30, calmBulge: 200, relief: 0.6,
   eye: 1.7, eyeTall: 1.3, eyeApart: 0.2, eyeDown: 0.4, feature: 1, featureUp: 0.5,
-  mouth: 1.25, mouthCurve: 0.5, mouthFlat: 0, mouthRelief: 0.8, noseForm: { r: [1.6, 1.2, 1.5], out: 1.45, k: 0.7, bridge: { r: [0.8, 0.7], k: 1.2 } }, neck: 0.5, neckTop: -5.5, neckFade: 3, ear: 0.9 };
+  mouth: 1.05, mouthCurve: 0.8, mouthFlat: 0, mouthRelief: 0.8, noseForm: { r: [1.6, 1.2, 1.5], out: 1.45, k: 0.7, bridge: { r: [0.8, 0.7], k: 1.2 } }, neck: 0.5, neckTop: -5.5, neckFade: 3, ear: 0.9 };
 const POSE = { mouthSmile_L: 0.25, mouthSmile_R: 0.25 };
 // the two wings of a bow for a Field: centre c, each `long`, half as high as tall[0] at the knot and tall[1] at the end, `thick` through; `back`: how far the ends lean back per cm
 const wings = (c, long, tall, thick, round, back = 0) => (x, y, z) => { const u = Math.abs(x - c[0]), t = Math.min(1, u / long), qx = u - long + round, qy = Math.abs(y - c[1]) - (tall[0] + (tall[1] - tall[0]) * Math.pow(t, 0.75)) + round, qz = Math.abs(z - c[2] + back * u) - thick + round; return Math.hypot(Math.max(qx, 0), Math.max(qy, 0), Math.max(qz, 0)) + Math.min(0, Math.max(qx, qy, qz)) - round; };
@@ -35,7 +35,7 @@ export const DESIGNS = {
       f.ell([0, -8.4, 0.5], [7.4, 5.6, 8.2], { mode: 'cut', k: 1.6 });  // hollow underneath, around the neck
       head.addSculpt(f, m, 0.35, true, [[-14, -9, -15.5], [14, 18.5, 14]]);
       // the fringe: broad locks that run from the top of the head over the hair, are combed across the forehead towards the clip and end in points above the brows
-      const fringe = [[-40, 58, -37, 40, -30, 26.5, 1.5], [-28, 60, -24, 40, -15.5, 23, 1.7], [-17, 62, -10, 40, -2, 21, 1.8], [-6, 63, 4, 41, 11.5, 21.5, 1.8], [5, 62, 17, 42, 24.5, 23.5, 1.7], [16, 60, 29, 42, 36, 27, 1.5]]
+      const fringe = [[-44, 56, -43, 38, -37, 19.5, 1.5], [-30, 60, -27, 42, -20, 29.5, 1.7], [-18, 62, -13, 42, -8, 27, 1.6], [-7, 63, -2, 40, 2.5, 19, 1.5], [4, 62, 11, 43, 13, 28, 1.6], [14, 61, 23, 43, 25, 30, 1.7], [26, 58, 37, 42, 39, 22, 1.5]] // short above the brows so they can move, long between them and at the temples
         .map(([y0, p0, y1, p1, y2, p2, wide]) => ({ path: [[y0, 100], [y0, p0], [y1, p1], [y2, p2]], wide, high: [0.68, 0.3], lift: [-1, -0.45, 0.25], hold: [0.3, 0.74], root: 0.8 }));
       // the sides and the back: long locks from the top down to the ends of the bob, which turn in towards the face
       const sides = []; for (const s of [-1, 1]) for (const [y0, y1, y2, y3, wide] of [[34, 50, 63, 52, 2.1], [62, 76, 86, 74, 2.3], [96, 104, 112, 100, 2.3], [130, 134, 139, 130, 2.4], [162, 164, 166, 160, 2.4]]) sides.push({ path: [[s * y0, 100], [s * y1, 55], [s * y2, 8], [s * y3, -36]], wide, high: [0.7, 0.45], lift: [-1, -0.42, -0.5], hold: [0.25, 0.8], root: 0.8, taper: 6 });

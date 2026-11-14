@@ -123,9 +123,9 @@ export class Figure {
       const a1 = au.AU1 * (1 - 0.25 * uu), a2 = clamp(au.AU2 + uu * 0.55, 0, 1.3), a4 = clamp(au.AU4 + ud * 0.45, 0, 1.3);
       w['browInnerUp' + sf] = a1; w['browOuterUp' + sf] = a2; w['browDown' + sf] = a4;
       const bm = this._brow[side], bk = act.brow ?? 1;
-      bm[0] = bk * (-0.3 * a4 + 0.08 * a1); bm[1] = bk * (0.75 * a1 - 0.5 * a4 + 0.25 * a2 + 0.12 * wide - 0.15 * au.AU9);
-      bm[2] = 0; bm[3] = bk * (0.32 * a1 + 0.6 * a2 - 0.3 * a4 + 0.12 * wide);
-      bm[4] = 0; bm[5] = bk * (0.5 * a2 - 0.18 * a1 * (1 - a2) - 0.04 * a4 + 0.05 * wide);
+      bm[0] = bk * (-0.4 * a4 + 0.08 * a1); bm[1] = bk * (0.75 * a1 - 0.95 * a4 + 0.25 * a2 + 0.12 * wide - 0.15 * au.AU9);
+      bm[2] = 0; bm[3] = bk * (0.32 * a1 + 0.6 * a2 - 0.4 * a4 + 0.12 * wide);
+      bm[4] = 0; bm[5] = bk * (0.5 * a2 - 0.18 * a1 * (1 - a2) + 0.15 * a4 + 0.05 * wide);
       head.browMove(side, bm);
       // lids
       const open = (1 - blink) * (1 - 0.7 * droop);
