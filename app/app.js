@@ -3,7 +3,7 @@ import { EmoGenerator } from './core/generator.js';
 import { IDS, K, EMOS, CHANNELS, GROUPS, frameToObj } from './core/au.js';
 import { SR, FPS } from './core/features.js';
 const SPEECH_LANGS = { ja: '日本語', en: 'English', zh: '中文', ko: '한국어', es: 'Español', fr: 'Français', de: 'Deutsch', it: 'Italiano', pt: 'Português', ru: 'Русский', id: 'Bahasa Indonesia', th: 'ไทย', vi: 'Tiếng Việt', hi: 'हिन्दी', ar: 'العربية' };
-import { trackVideoFace } from './core/facetrack.js';
+import { trackVideoFace, matchFaces } from './core/facetrack.js';
 import { SpeechToText, speechLines } from './core/transcribe.js';
 import { understandRemote, understandLocal, toOverrides, DEFAULT_MODEL, LIVE_MODEL } from './core/understand.js';
 import { newSpeaker, analyzeSpeaker, readSpeaker, directSpeaker, isDirected, upgradeTrack, diarize, Composer, insertGesture, exportEmo, exportCSV, GESTURES, STYLES } from './core/project.js';
@@ -147,6 +147,16 @@ class App {
       this.stt = this.stt || new SpeechToText();
       segments = await this.stt.speakers(x, k, (m) => this.busy(m.what === 'speakers' ? `${t('spkLoading')} ${Math.round(m.loaded / 1e6)} / ${Math.round(m.total / 1e6)} MB` : `${t('spkSplitting')} ${Math.round(m.u * 100)}%`));
     } catch (e) { console.warn('speaker split fell back:', e); segments = diarize(x, k).segments; }
+    // a video of the conversation: follow each person's face (blink, mouth, where the head turns and the eyes look) and
+    // give each voice the face whose mouth moves while that voice speaks
+    let faceOf = new Array(k).fill(null);
+    if (/video/.test(file.type) || /\.(mp4|mov|webm|m4v)$/i.test(file.name)) {
+      const T = Math.max(1, Math.floor(x.length / SR * FPS));
+      try {
+        const tracks = await trackVideoFace(file, T, '', (u) => this.busy(`${t('faceTracking')} ${Math.round(u * 100)}%`), k);
+        if (tracks && tracks.length) { const m = matchFaces(tracks, segments, k, T); faceOf = m.map((i) => (i >= 0 ? tracks[i] : null)); console.info('faces', tracks.map((q) => q.x.toFixed(2)), 'match', m, matchFaces.last); }
+      } catch (e) { console.warn('face tracking', e); }
+    }
     const n0 = this.project.speakers.length;
     for (let j = 0; j < k; j++) {
       const a = new Float32Array(x.length);
@@ -156,7 +166,7 @@ class App {
       }
       const i = n0 + j;
       const sp = newSpeaker(i, `${t('speaker')} ${String.fromCharCode(65 + j)}`, AVATARS[i % AVATARS.length]);
-      sp.audio16k = a;
+      sp.audio16k = a; if (faceOf[j]) sp.face = faceOf[j];
       this.busy(t('generating') + ` (${j + 1}/${k})`); await sleep(30);
       await this.process(sp);
       this.project.speakers.push(sp);

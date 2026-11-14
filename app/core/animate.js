@@ -633,6 +633,24 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
   // performer in place of the ones guessed from the sound, and its blinks replace the ones the director placed
   const NV = VISEME.length, seen = (t) => !!(face && face.seen[t]);
   if (face) { const au = {}, tmpV = {}; for (let t = 0; t < T; t++) if (face.seen[t]) { VISEME.forEach((id, j) => { au[id] = face.mouth[t * NV + j]; }); vis[t] = { ...visemesFromCamera(au, meta, tmpV) }; gate[t] = 1; } }
+  // where the filmed face turns its head and looks (toward the other person or away): taken as the base of the head's
+  // direction and of the gaze, smoothed; the director's own nods and accents stay on top at a smaller size. The tilt
+  // and the up-down of the head and eyes are measured from the person's usual position (the camera may sit high or low,
+  // glasses can bias the eyes), the left-right turn as it is, since it says where the other person is.
+  let fp = null;
+  if (face && face.pose && face.pose.length === T * 5) {
+    const P = face.pose, NP = 5, med = (arr) => { const v = arr.slice().sort((x, y) => x - y); return v.length ? v[v.length >> 1] : 0; };
+    const base = [0, 1, 2, 3, 4].map((j) => { if (j === 0) return 0; const v = []; for (let t = 0; t < T; t++) if (face.seen[t]) v.push(P[t * NP + j]); return med(v); });
+    fp = new Float32Array(T * NP); const w = new Float32Array(T);
+    for (let t = 0; t < T; t++) {
+      if (face.seen[t]) w[t] = 1;
+      for (let j = 0; j < NP; j++) { const v = []; for (let u = t - 4; u <= t + 4; u++) if (u >= 0 && u < T && face.seen[u]) v.push(P[u * NP + j]); fp[t * NP + j] = v.length ? med(v) - base[j] : 0; }
+    }
+    // a light glide over the medians, and a fade in and out where the face comes and goes
+    for (let pass = 0; pass < 2; pass++) for (let j = 0; j < NP; j++) { let prev = fp[j]; for (let t = 0; t < T; t++) { const c = fp[t * NP + j]; prev += (c - prev) * 0.45; fp[t * NP + j] = prev; } }
+    const fw = new Float32Array(T); for (let t = 0; t < T; t++) { let s = 0, n = 0; for (let u = t - 6; u <= t + 6; u++) if (u >= 0 && u < T) { s += w[u]; n++; } fw[t] = s / n; }
+    fp.w = fw;
+  }
   // ---- perform ----
   const perf = new Performer({ seed, profile: prof });
   const track = new Float32Array(T * K), emo = new Float32Array(T * NE);
@@ -641,6 +659,11 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
     while (ei < ev.length && ev[ei].t <= t) { const e = ev[ei++]; if (e.type === 'blink' && (seen(t) || seen(Math.min(T - 1, t + 6)))) continue; perf.event(e); }
     const y = perf.step({ speaking: an.speech[t], mouth: gate[t], vis: vis[t], browF0: browF0[t], tex: [tex[t * 3], tex[t * 3 + 1], tex[t * 3 + 2]] });
     if (seen(t)) y[IDX.AU45] = Math.max(y[IDX.AU45], face.blink[t]);
+    if (fp && fp.w[t] > 0) {
+      const w = fp.w[t], o = t * 5, mix = (k, v, keep) => { y[k] = (1 - w) * y[k] + w * (v + keep * y[k]); };
+      mix(IDX.headYaw, clamp(fp[o] * 0.75, -35, 35), 0.3); mix(IDX.headPitch, clamp(fp[o + 1] * 0.9, -25, 25), 0.4); mix(IDX.headRoll, clamp(fp[o + 2] * 0.8, -20, 20), 0.35);
+      mix(IDX.gazeX, clamp(fp[o + 3], -1, 1), 0.25); mix(IDX.gazeY, clamp(fp[o + 4], -1, 1), 0.25);
+    }
     track.set(y, t * K);
     const ph = phrases.find((p) => t >= p.tp && t < p.t1 + 12);
     if (ph) for (let e = 0; e < NE; e++) emo[t * NE + e] = ph.p[e]; else emo[t * NE] = 1;

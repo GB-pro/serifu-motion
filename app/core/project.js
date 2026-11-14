@@ -32,7 +32,7 @@ export function readSpeaker(sp, gen) { if (!sp.features || !sp.stats) analyzeSpe
 // the performance built from that reading: fast, repeated after every change of emotion, avatar, style or strength
 export function directSpeaker(sp, gen, acting = null) {
   if (!sp.net) readSpeaker(sp, gen);
-  if (sp.face && sp.face.seen.length < sp.T) { const f = sp.face, n = f.mouth.length / f.seen.length, g = { seen: new Uint8Array(sp.T), blink: new Float32Array(sp.T), mouth: new Float32Array(sp.T * n), share: f.share }; g.seen.set(f.seen); g.blink.set(f.blink); g.mouth.set(f.mouth); sp.face = g; } // the track was made longer (silence after it)
+  if (sp.face && sp.face.seen.length < sp.T) { const f = sp.face, n = f.mouth.length / f.seen.length, g = { seen: new Uint8Array(sp.T), blink: new Float32Array(sp.T), mouth: new Float32Array(sp.T * n), share: f.share }; g.seen.set(f.seen); g.blink.set(f.blink); g.mouth.set(f.mouth); if (f.pose) { g.pose = new Float32Array(sp.T * 5); g.pose.set(f.pose); } sp.face = g; } // the track was made longer (silence after it)
   const out = gen.direct(sp.net, sp.features, sp.T, { seed: sp.seed, style: sp.style, profile: acting ? acting[sp.avatar] : null, overrides: sp.emoOverrides, exaggeration: sp.expressiveness, face: sp.face || null, vowels: sp.vowels && sp.vowels.length === sp.T * 7 ? sp.vowels : null });
   sp.base = out.base; sp.emo = out.emo; sp.voiced = out.voiced; sp.plan = out.plan;
   return sp;
