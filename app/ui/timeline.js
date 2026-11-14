@@ -187,6 +187,15 @@ export class Timeline {
         for (let j = 0; j < sps; j += 4) { const v = Math.abs(a[s + j] || 0); if (v > m) m = v; }
         const h = Math.min(l.h / 2 - 2, m * l.h * 0.9); g.fillRect(x, mid - h, 1, h * 2);
       }
+      // what was heard in each line (speech to text), written over the waveform
+      g.font = '11px system-ui, sans-serif'; g.textBaseline = 'top';
+      for (const ln of sp.script || []) {
+        const xa = Math.max(HEAD_W, this.t2x(ln.start)), xb = Math.min(W, this.t2x(ln.end)); if (xb - xa < 30) continue;
+        g.save(); g.beginPath(); g.rect(xa, l.y, xb - xa, l.h); g.clip();
+        const w = g.measureText(ln.text).width + 8; g.fillStyle = C('--tl-bg') || '#fff'; g.globalAlpha = 0.8; g.fillRect(xa, l.y + 1, Math.min(w, xb - xa), 14); g.globalAlpha = 1;
+        g.fillStyle = C('--tl-text'); g.fillText(ln.text, xa + 4, l.y + 2); g.restore();
+      }
+      g.textBaseline = 'middle';
       return;
     }
     if (l.type === 'emo') {

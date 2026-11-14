@@ -339,7 +339,7 @@ export class Performer {
 // ---------------------------------------------------------------------------------------------------------
 const speechFlag = (F, t) => (F[t * FEAT_DIM + 1] > 0.5 || F[t * FEAT_DIM] > -1.5 ? 1 : 0);
 
-export function analyzeSpeech(F, T, aux = null, auxDim = 3) {
+export function analyzeSpeech(F, T, aux = null, auxDim = 3, cuts = null) {
   const raw = new Uint8Array(T); for (let t = 0; t < T; t++) raw[t] = speechFlag(F, t);
   // close short gaps, drop tiny islands
   const sp = Uint8Array.from(raw);
@@ -350,6 +350,13 @@ export function analyzeSpeech(F, T, aux = null, auxDim = 3) {
   const phrases = [];
   for (const [a, b] of runs) { const last = phrases[phrases.length - 1]; if (last && a - last.t1 < 9) last.t1 = b; else phrases.push({ t0: a, t1: b }); }
   for (let i = phrases.length - 1; i >= 0; i--) if (phrases[i].t1 - phrases[i].t0 < 6) { sp.fill(0, phrases[i].t0, phrases[i].t1); phrases.splice(i, 1); } // a click or a breath is not a phrase
+  // where the feeling is known to change inside a phrase (a mark on the timeline begins or ends there), the phrase is
+  // played as two: cut at the quietest moment nearby, and only when both halves are long enough to act
+  if (cuts) for (const c0 of cuts) {
+    const i = phrases.findIndex((ph) => c0 - ph.t0 >= 15 && ph.t1 - c0 >= 15); if (i < 0) continue;
+    let c = c0, lo = Infinity; for (let t = c0 - 6; t <= c0 + 6; t++) if (F[t * FEAT_DIM] < lo) { lo = F[t * FEAT_DIM]; c = t; }
+    phrases.splice(i, 1, { t0: phrases[i].t0, t1: c }, { t0: c, t1: phrases[i].t1 });
+  }
   // smoothed energy and pitch
   const en = new Float32Array(T), f0 = new Float32Array(T);
   for (let t = 0; t < T; t++) { let s = 0, c = 0; for (let j = -1; j <= 1; j++) { const u = t + j; if (u >= 0 && u < T) { s += F[u * FEAT_DIM] * (j ? 1 : 2); c += j ? 1 : 2; } } en[t] = s / c; }
@@ -467,7 +474,8 @@ export function visemesFromCamera(au, meta, out = {}) {
 export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile = null, overrides = [], exaggeration = 1 }) {
   const KMn = meta.names.length, NE = EMOS.length, prof = { ...DEFAULT_PROFILE, ...(profile || {}) };
   const r = rng(seed);
-  const an = analyzeSpeech(F, T, aux);
+  const cuts = []; for (const ov of overrides) for (const x of [ov.start, ov.end]) { const c = Math.round(x * FPS); if (overrides.some((o) => o !== ov && (Math.abs(o.start - x) < 0.02 || Math.abs(o.end - x) < 0.02) && o.emo !== ov.emo) && !cuts.includes(c)) cuts.push(c); } // only where one mark hands over to another with a different feeling
+  const an = analyzeSpeech(F, T, aux, 3, cuts.sort((a, b) => a - b));
   const phrases = an.phrases;
   // ---- what: emotion + intensity per phrase (posterior averaged over the phrase, shared a little with its neighbours) ----
   const post = phrases.map((ph) => { const p = new Array(NE).fill(0); let n = 0; for (let t = ph.t0; t < ph.t1; t++) { const q = softmax(Array.from(logits.subarray(t * NE, t * NE + NE))); for (let e = 0; e < NE; e++) p[e] += q[e]; n++; } return p.map((v) => v / Math.max(1, n)); });
@@ -490,7 +498,7 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
     ph.w2 = ph.emo2 ? Math.pow(p[second], 1.5) / (Math.pow(p[best], 1.5) + Math.pow(p[second], 1.5)) : 0;
     const mid = (ph.t0 + ph.t1) / 2 / FPS;
     // a user override fixes the emotion of the phrase; without an explicit intensity the delivery of the line decides it
-    for (const ov of overrides) if (mid >= ov.start && mid <= ov.end) { ph.emo = ov.emo; ph.inten = clamp(ov.intensity ?? inten0, 0.2, 1.3); ph.conf = 1; ph.p = EMOS.map((e) => (e === ov.emo ? 1 : 0)); ph.emo2 = null; ph.w2 = 0; ph.fixed = true; }
+    for (const ov of overrides) if (mid >= ov.start && mid <= ov.end) { ph.emo = ov.emo; ph.inten = clamp(ov.intensity ?? inten0, 0.2, 1.3); ph.conf = 1; ph.p = EMOS.map((e) => (e === ov.emo ? 1 : 0)); ph.emo2 = ov.emo2 || null; ph.w2 = ov.emo2 ? 0.3 : 0; ph.fixed = true; }
     ph.inten *= exaggeration;
     const vars = POSES[ph.emo]; let v = Math.floor(r() * vars.length);
     if (E[ph.emo] === prevEmo && v === prevVar) v = (v + 1) % vars.length;

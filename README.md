@@ -30,6 +30,15 @@
 | `tools/` | 比較動画の生成ほか |
 | `models/anim_stats.json` | 公開アニメ映画の頭の動きの統計（数値のみ） |
 
+## セリフの意味を読む仕組み
+
+読み込んだ音声は、ブラウザの中で文字に起こします（`app/core/asr.js`、`asr_worker.js`）。その文章を、設定画面で入れた Claude API のキーで外部のAIに送り、フレーズごとの感情と強さを受け取って演技トラックの印にします（`app/core/understand.js`）。キーはブラウザの中だけに保存され、送るのは文章だけで、音声は送りません。キーが無いときは端末内の簡易な読み取り（単語の一覧による判定）を使います。
+
+同梱している第三者の部品:
+
+- 音声認識モデル Whisper base（OpenAI、MIT License）。[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)（Apache License 2.0）が公開している ONNX 版を `app/models/whisper/` に置いています（GitHub の1ファイル100MBの上限のため、デコーダーは2つに分割）。
+- [ONNX Runtime Web](https://github.com/microsoft/onnxruntime)（Microsoft、MIT License）: `app/vendor/ort/`。
+
 ## 学習データ
 
 - [CREMA-D](https://github.com/CheyneyComputerScience/CREMA-D)（Open Database License）: 俳優91人が12文を6感情で話した映像7,442本。映像そのものは保持・再配布せず、MediaPipe で抽出した数値（AU強度、頭部姿勢、肩の動き）と音声特徴だけを学習に使います。

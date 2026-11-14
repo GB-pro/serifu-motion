@@ -16,6 +16,7 @@
     <button role="tab" data-tab="studio" class="on" data-i18n="studio"></button>
     <button role="tab" data-tab="live" data-i18n="live"></button>
   </nav>
+  <button id="aiBtn" class="ghost" data-i18n="aiSettings"></button>
   <select id="lang" aria-label="Language"></select>
 </header>
 
@@ -51,6 +52,10 @@
         <button class="btn" id="demoBtn" data-i18n="demo" hidden></button><!-- shown again once a demo project (demo/demo.json) is published -->
         <label class="btn ghost"><input type="file" id="fileProj" accept=".json,application/json" hidden><span data-i18n="importJson"></span></label>
       </div>
+      <div class="row wrap">
+        <button class="btn" id="readBtn" data-i18n="readLines"></button>
+      </div>
+      <p class="ainote" id="aiInfo" hidden></p>
       <h3 data-i18n="speakers"></h3>
       <div id="spList"></div>
       <div id="spDetail"></div>
@@ -97,6 +102,19 @@
     <label class="mini"><span data-i18n="intensity"></span> <input type="range" id="emoInt" min="0.1" max="1.5" step="0.05" value="0.8"> <output id="emoIntV"></output></label>
     <div class="row end">
       <button value="remove" class="ghost danger" id="emoRemove" data-i18n="remove"></button>
+      <button value="cancel" class="ghost" data-i18n="cancel"></button>
+      <button value="apply" class="btn primary" data-i18n="apply"></button>
+    </div>
+  </form>
+</dialog>
+<dialog id="aiDlg">
+  <form method="dialog">
+    <h3 data-i18n="aiSettings"></h3>
+    <label class="check"><input type="checkbox" id="aiOn"> <span data-i18n="aiOn"></span></label>
+    <label class="field"><span data-i18n="aiKey"></span><input type="password" id="aiKey" autocomplete="off" spellcheck="false" placeholder="sk-ant-…"></label>
+    <p class="dim" data-i18n="aiKeyHint"></p>
+    <label class="field"><span data-i18n="aiModel"></span><input type="text" id="aiModel" autocomplete="off" spellcheck="false"></label>
+    <div class="row end">
       <button value="cancel" class="ghost" data-i18n="cancel"></button>
       <button value="apply" class="btn primary" data-i18n="apply"></button>
     </div>

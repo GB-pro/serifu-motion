@@ -2,6 +2,8 @@
 import { EmoGenerator } from './core/generator.js';
 import { IDS, K, EMOS, CHANNELS, GROUPS, frameToObj } from './core/au.js';
 import { SR, FPS } from './core/features.js';
+import { SpeechToText, speechLines } from './core/transcribe.js';
+import { understandRemote, understandLocal, toOverrides, DEFAULT_MODEL } from './core/understand.js';
 import { newSpeaker, analyzeSpeaker, readSpeaker, directSpeaker, isDirected, upgradeTrack, diarize, Composer, insertGesture, exportEmo, exportCSV, GESTURES, STYLES } from './core/project.js';
 import { DESIGNS } from './avatar/characters.js';
 import { Stage } from './ui/stage.js';
@@ -34,7 +36,7 @@ class App {
     $('#modelInfo').textContent = `${t('model')}: ${this.gen.meta.dataset} · ${this.gen.meta.trained_clips} clips`;
     this.stage = new Stage($('#stage'), { preserve: true });
     this.timeline = new Timeline($('#timeline'), this);
-    this.bindUI();
+    this.bindUI(); this.bindAI();
     this.busy(null);
     this.renderPanel();
     this.loop();
@@ -106,6 +108,7 @@ class App {
     }
     this.padSpeakers();
     this.afterChange(); this.busy(null);
+    await this.understand(this.project.speakers.slice(-files.length), true);
   }
   async addMixed(file, k) {
     if (!file) return;
@@ -129,6 +132,7 @@ class App {
     }
     this.padSpeakers();
     this.afterChange(); this.busy(null);
+    await this.understand(this.project.speakers.slice(n0), true);
   }
   // A file that carries video: the video is shown small over the stage as a reference and follows the playhead.
   // It is only looked at: its picture is not copied into the project.
@@ -147,6 +151,50 @@ class App {
     const t2 = Math.min(this.time, (v.duration || 1e9) - 0.05);
     if (this.playing) { if (v.paused) { v.currentTime = t2; v.play().catch(() => {}); } else if (Math.abs(v.currentTime - t2) > 0.25) v.currentTime = t2; }
     else { if (!v.paused) v.pause(); if (force || Math.abs(v.currentTime - t2) > 0.02) v.currentTime = t2; }
+  }
+  // ---------- what is said: speech to text, then the meaning of the lines decides the feelings ----------
+  aiSettings() { const g = (k) => { try { return localStorage.getItem(k) || ''; } catch { return ''; } }; return { on: g('sm.ai.on') !== '0', key: g('sm.ai.key'), model: g('sm.ai.model') || DEFAULT_MODEL }; }
+  bindAI() {
+    const dlg = $('#aiDlg'), put = (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch { /* private mode: kept for this visit only */ } };
+    $('#aiBtn').onclick = () => { const s = this.aiSettings(); $('#aiOn').checked = s.on; $('#aiKey').value = s.key; $('#aiModel').value = s.model; dlg.showModal(); };
+    dlg.addEventListener('close', () => {
+      if (dlg.returnValue !== 'apply') return;
+      put('sm.ai.on', $('#aiOn').checked ? '' : '0'); put('sm.ai.key', $('#aiKey').value.trim()); put('sm.ai.model', $('#aiModel').value.trim() === DEFAULT_MODEL ? '' : $('#aiModel').value.trim());
+    });
+    $('#readBtn').onclick = () => this.understand(this.project.speakers, false);
+  }
+  note(msg, warn = false) { const el = $('#aiInfo'); el.textContent = msg || ''; el.classList.toggle('warn', !!warn); el.hidden = !msg; }
+  // Reads the lines of these speakers (auto: after an import, only when the setting is on) and re-directs them.
+  async understand(speakers, auto) {
+    const set = this.aiSettings(); speakers = speakers.filter((sp) => !sp.recorded && sp.audio16k && sp.features);
+    if (!speakers.length || (auto && !set.on) || this.reading) return;
+    this.reading = true;
+    try {
+      this.stt = this.stt || new SpeechToText();
+      this.busy(t('sttLoading')); await this.stt.load((a, b) => this.busy(`${t('sttLoading')} ${Math.round(a / 1e6)} / ${Math.round(b / 1e6)} MB`));
+      const jobs = speakers.map((sp) => ({ sp, lines: speechLines(sp) })), total = jobs.reduce((s, j) => s + j.lines.length, 0); let k = 0;
+      for (const j of jobs) {
+        this.stt.forget(); j.sp.script = [];
+        for (const l of j.lines) { this.busy(`${t('sttLine')} (${++k}/${total})`); const r = await this.stt.line(l.samples); if (r.text) j.sp.script.push({ start: l.start, end: l.end, text: r.text, lang: r.lang, conf: +r.conf.toFixed(2) }); }
+      }
+      // the whole dialogue in the order it is spoken, so each line is understood in the light of the others
+      const all = this.project.speakers.flatMap((sp) => (sp.script || []).map((l) => ({ ...l, sp, speaker: sp.name }))).sort((a, b) => a.start - b.start);
+      if (!all.length) { this.note(t('noWords'), true); return; }
+      let parts = null, why = '';
+      if (set.key) {
+        this.busy(t('understanding'));
+        try { parts = await understandRemote(all, { key: set.key, model: set.model }); } catch (e) { why = `${t('aiFailed')} (${t('aiErr_' + e.code) || e.code}${e.code === 'http' || e.code === 'answer' ? ': ' + e.message : ''})`; console.warn('understanding', e); }
+      }
+      const remote = !!parts; if (!parts) parts = understandLocal(all);
+      this.pushUndo();
+      for (const sp of this.project.speakers) {
+        const idx = all.map((l, i) => (l.sp === sp ? i : -1)).filter((i) => i >= 0); if (!idx.length) continue;
+        sp.emoOverrides = toOverrides(idx.map((i) => all[i]), idx.map((i) => parts[i]), sp.emoOverrides); this.redirect(sp);
+      }
+      this.afterChange();
+      this.note(remote ? t('readByAI') : `${t('readOnDevice')}${why ? ' ' + why : set.key ? '' : ' ' + t('noKeyHint')}`, !remote);
+    } catch (e) { console.error(e); this.note(`${t('sttFailed')} (${e.message})`, true); }
+    finally { this.reading = false; this.busy(null); }
   }
   async process(sp) {
     analyzeSpeaker(sp); await sleep(10);
@@ -335,7 +383,7 @@ class App {
     const i16 = (a) => { const o = new Int16Array(a.length); for (let i = 0; i < a.length; i++) o[i] = Math.max(-32767, Math.min(32767, a[i] * 32767)); return b64(new Uint8Array(o.buffer)); };
     // generated takes are rebuilt from their audio when the project is opened (same seed, same result); only live
     // recordings carry their frames, because the camera's blinks and mouth cannot be regenerated
-    return { format: 'serifu-motion-project/2', speakers: this.project.speakers.map((s) => ({ name: s.name, avatar: s.avatar, color: s.color, expressiveness: s.expressiveness, style: s.style, seed: s.seed, visible: s.visible, edits: s.edits, emoOverrides: s.emoOverrides, recorded: !!s.recorded, T: s.T, audio: i16(s.audio16k), ...(s.recorded ? { base: f32(s.base), emo: f32(s.emo) } : {}) })) };
+    return { format: 'serifu-motion-project/2', speakers: this.project.speakers.map((s) => ({ name: s.name, avatar: s.avatar, color: s.color, expressiveness: s.expressiveness, style: s.style, seed: s.seed, visible: s.visible, edits: s.edits, emoOverrides: s.emoOverrides, script: s.script || [], recorded: !!s.recorded, T: s.T, audio: i16(s.audio16k), ...(s.recorded ? { base: f32(s.base), emo: f32(s.emo) } : {}) })) };
   }
   async loadProject(p) {
     const v1 = p.format === 'serifu-motion-project/1';
@@ -344,7 +392,7 @@ class App {
     const speakers = [];
     for (let i = 0; i < p.speakers.length; i++) {
       const d = p.speakers[i], sp = newSpeaker(i, d.name, d.avatar);
-      Object.assign(sp, { color: d.color || sp.color, expressiveness: d.expressiveness ?? 1, style: d.style || 'anime', seed: d.seed ?? sp.seed, visible: (d.visible || sp.visible).filter((id) => IDS.includes(id)), edits: d.edits || {}, emoOverrides: d.emoOverrides || [], recorded: !!d.recorded, T: d.T });
+      Object.assign(sp, { color: d.color || sp.color, expressiveness: d.expressiveness ?? 1, style: d.style || 'anime', seed: d.seed ?? sp.seed, visible: (d.visible || sp.visible).filter((id) => IDS.includes(id)), edits: d.edits || {}, emoOverrides: d.emoOverrides || [], script: d.script || [], recorded: !!d.recorded, T: d.T });
       const ia = new Int16Array(unb64(d.audio).buffer); sp.audio16k = Float32Array.from(ia, (v) => v / 32767);
       if (sp.recorded && d.base) { sp.base = upgradeTrack(new Float32Array(unb64(d.base).buffer), d.T, this.gen.meta); sp.emo = new Float32Array(unb64(d.emo).buffer); this.recompose(sp); }
       else { sp.recorded = false; this.busy(t('generating') + ` (${i + 1}/${p.speakers.length})`); await sleep(20); await this.process(sp); }
