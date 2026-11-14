@@ -103,9 +103,17 @@ export class LiveSession {
   // called every animation frame; returns the latest composed emo frame (Float32Array K) or null
   tick(now) {
     if (!this.running) return null;
-    let f = null; while (this.queue.length) f = this.queue.shift(); // newest generated frame
-    if (f) this.lastFrame = f;
-    if (!this.lastFrame) return null;
+    // The frames are made 30 times a second, in small bursts as the sound arrives; the screen is drawn 60 or 120 times
+    // a second. Showing the newest frame as it comes makes the face move in steps, so the frames are played out evenly,
+    // about four frames behind the newest, and every picture is a blend of the two frames it falls between.
+    if (this.queue.length > 12) this.queue.splice(0, this.queue.length - 4); // fell far behind (the tab was in the background)
+    const dt = this._last ? Math.min(0.1, (now - this._last) / 1000) : 0; this._last = now;
+    if (!this.lastFrame) { if (this.queue.length < 4) return null; this.lastFrame = this.queue.shift(); this.u = 0; }
+    // the speed leans gently towards keeping about four frames in hand: a little faster when they pile up, slower when they run low
+    this.rate = (this.rate || 1) + 0.02 * (Math.min(1.12, Math.max(0.88, 1 + 0.03 * (this.queue.length + (1 - this.u) - 4.5))) - (this.rate || 1));
+    this.u += dt * 30 * this.rate;
+    while (this.u >= 1 && this.queue.length) { this.lastFrame = this.queue.shift(); this.u -= 1; }
+    const nxt = this.queue[0], u = nxt ? Math.min(1, this.u) : 0; if (!nxt) this.u = Math.min(this.u, 1);
     // camera: blink + mouth only
     if (this.cam && this.video.readyState >= 2) {
       try {
@@ -118,7 +126,8 @@ export class LiveSession {
         }
       } catch (e) { this.faceSeen = false; }
     }
-    const y = this._compose(this.lastFrame.y);
+    let src = this.lastFrame.y; if (nxt && u > 0) { src = this._mix || (this._mix = new Float32Array(K)); const a = this.lastFrame.y, b = nxt.y; for (let k = 0; k < K; k++) src[k] = a[k] + (b[k] - a[k]) * u; }
+    const y = this._compose(src);
     // the meter shows what is being played: the feeling of the words while one is known, otherwise the reading of the voice
     const emo = this.mark ? EMOS.map((e) => (e === this.mark.emo ? Math.min(1, this.mark.intensity) : 0)) : this.lastFrame.emo;
     return { y, emo, voiced: this.lastFrame.voiced };

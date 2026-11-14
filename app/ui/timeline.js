@@ -242,8 +242,9 @@ export class Timeline {
       if (!arr) continue;
       g.strokeStyle = style; g.lineWidth = lw; g.beginPath(); let first = true;
       for (let x = Math.floor(x0); x < x1; x += 1) {
-        const t = Math.round(this.x2t(x) * FPS); if (t < 0 || t >= T) continue;
-        const y = this.v2y(l, Math.max(ra, Math.min(rb, arr[t * K + l.k])));
+        const ft = this.x2t(x) * FPS, t = Math.floor(ft); if (t < 0 || t >= T) continue;
+        const t2 = Math.min(T - 1, t + 1), v = arr[t * K + l.k] + (arr[t2 * K + l.k] - arr[t * K + l.k]) * (ft - t); // between two frames the curve runs straight, as the stage plays it
+        const y = this.v2y(l, Math.max(ra, Math.min(rb, v)));
         if (first) { g.moveTo(x, y); first = false; } else g.lineTo(x, y);
       }
       g.stroke();
