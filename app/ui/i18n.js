@@ -27,6 +27,8 @@ const S = {
   aiErr_http: { ja: "エラー", en: "error", zh: "错误", ko: "오류", es: "error", fr: "erreur", de: "Fehler" },
   noWords: { ja: "セリフを聞き取れませんでした。", en: "No words could be made out.", zh: "未能识别出台词。", ko: "대사를 알아듣지 못했습니다.", es: "No se entendieron palabras.", fr: "Aucun mot reconnu.", de: "Keine Wörter erkannt." },
   sttFailed: { ja: "文字起こしを実行できませんでした", en: "Speech recognition could not run", zh: "无法运行语音识别", ko: "음성 인식을 실행할 수 없습니다", es: "No se pudo ejecutar el reconocimiento de voz", fr: "La reconnaissance vocale n’a pas pu s’exécuter", de: "Spracherkennung konnte nicht laufen" },
+  faceTracking: { ja: '動画の顔から瞬きと口の動きを読み取り中…', en: 'Reading blinks and mouth from the face in the video…', zh: '正在从视频中的脸读取眨眼和口型…', ko: '영상 속 얼굴에서 눈 깜빡임과 입 모양을 읽는 중…', es: 'Leyendo parpadeos y boca de la cara del vídeo…', fr: 'Lecture des clignements et de la bouche dans la vidéo…', de: 'Blinzeln und Mund aus dem Video werden gelesen…' },
+  faceUsed: { ja: '瞬きと口: 動画の顔から', en: 'Blink and mouth: from the face in the video', zh: '眨眼和口型：来自视频中的脸', ko: '눈 깜빡임과 입: 영상 속 얼굴에서', es: 'Parpadeo y boca: de la cara del vídeo', fr: 'Clignements et bouche : depuis la vidéo', de: 'Blinzeln und Mund: aus dem Video' },
   refVideo: { ja: '参考動画', en: 'Reference video', zh: '参考视频', ko: '참고 영상', es: 'Vídeo de referencia', fr: 'Vidéo de référence', de: 'Referenzvideo' },
   addMixed: { ja: '会話音声を話者分離して追加', en: 'Add dialogue (auto speaker split)', zh: '添加对话（自动分离说话人）', ko: '대화 음성 추가 (화자 자동 분리)', es: 'Añadir diálogo (separación automática)', fr: 'Ajouter un dialogue (séparation auto)', de: 'Dialog hinzufügen (automatische Trennung)' },
   numSpeakers: { ja: '話者数', en: 'Speakers', zh: '人数', ko: '화자 수', es: 'Nº hablantes', fr: 'Nb locuteurs', de: 'Anzahl' },

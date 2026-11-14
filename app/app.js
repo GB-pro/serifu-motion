@@ -2,6 +2,7 @@
 import { EmoGenerator } from './core/generator.js';
 import { IDS, K, EMOS, CHANNELS, GROUPS, frameToObj } from './core/au.js';
 import { SR, FPS } from './core/features.js';
+import { trackVideoFace } from './core/facetrack.js';
 import { SpeechToText, speechLines } from './core/transcribe.js';
 import { understandRemote, understandLocal, toOverrides, DEFAULT_MODEL } from './core/understand.js';
 import { newSpeaker, analyzeSpeaker, readSpeaker, directSpeaker, isDirected, upgradeTrack, diarize, Composer, insertGesture, exportEmo, exportCSV, GESTURES, STYLES } from './core/project.js';
@@ -103,6 +104,13 @@ class App {
       const i = this.project.speakers.length;
       const sp = newSpeaker(i, f.name.replace(/\.[^.]+$/, '').slice(0, 24), AVATARS[i % AVATARS.length]);
       sp.audio16k = x;
+      analyzeSpeaker(sp);
+      // a video of the speaker: the blink and the mouth are taken from the face in it, as the camera gives them in live mode
+      if (/video/.test(f.type) || /\.(mp4|mov|webm|m4v)$/i.test(f.name)) {
+        this.busy(t('faceTracking'));
+        try { sp.face = await trackVideoFace(f, sp.T, '', (u) => this.busy(`${t('faceTracking')} ${Math.round(u * 100)}%`)); } catch (e) { console.warn('face tracking', e); sp.face = null; }
+        this.busy(t('analyzing') + ' ' + f.name); await sleep(10);
+      }
       await this.process(sp);
       this.project.speakers.push(sp);
     }
@@ -163,7 +171,7 @@ class App {
     });
     $('#readBtn').onclick = () => this.understand(this.project.speakers, false);
   }
-  note(msg, warn = false) { const el = $('#aiInfo'); el.textContent = msg || ''; el.classList.toggle('warn', !!warn); el.hidden = !msg; }
+  note(msg, warn = false) { const el = $('#aiInfo'); if (msg && this.project.speakers.some((sp) => sp.face)) msg += ' ' + t('faceUsed') + '。'; el.textContent = msg || ''; el.classList.toggle('warn', !!warn); el.hidden = !msg; }
   // Reads the lines of these speakers (auto: after an import, only when the setting is on) and re-directs them.
   async understand(speakers, auto) {
     const set = this.aiSettings(); speakers = speakers.filter((sp) => !sp.recorded && sp.audio16k && sp.features);

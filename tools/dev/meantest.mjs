@@ -13,13 +13,13 @@ await p.route('https://api.anthropic.com/**', async (route) => {
   await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: JSON.stringify(answer) }] }) });
 });
 if (mode !== 'nokey') await p.addInitScript(() => localStorage.setItem('sm.ai.key', 'test-key-not-real'));
-await p.goto('http://127.0.0.1:8765/index.html'); await p.waitForSelector('#fileSep', { state: 'attached', timeout: 60000 });
+await p.goto(process.env.SITE || 'http://127.0.0.1:8765/index.html'); await p.waitForSelector('#fileSep', { state: 'attached', timeout: 60000 });
 const t0 = Date.now();
 await p.setInputFiles('#fileSep', file);
 await p.waitForFunction(() => !document.querySelector('#aiInfo').hidden && document.querySelector('#busy').hidden, null, { timeout: 600000 });
 console.log('seconds', ((Date.now() - t0) / 1000).toFixed(1));
 console.log('note', await p.textContent('#aiInfo'));
-const st = await p.evaluate(() => { const sp = window.app.project.speakers[0]; return { script: sp.script, ov: sp.emoOverrides, plan: sp.plan.phrases.map((q) => [+(q.t0 / 30).toFixed(1), q.emo, q.inten, q.fixed]) }; });
+const st = await p.evaluate(() => { const sp = window.app.project.speakers[0]; return { face: sp.face ? { share: sp.face.share, blinkMax: Math.max(...sp.face.blink), jawMax: Math.max(...sp.face.mouth.filter((v, i) => i % 8 === 0)) } : null, script: sp.script, ov: sp.emoOverrides, plan: sp.plan.phrases.map((q) => [+(q.t0 / 30).toFixed(1), q.emo, q.inten, q.fixed]) }; });
 console.log(JSON.stringify(st, null, 1).slice(0, 3000));
 if (asked) console.log('asked', asked.body.model, Object.keys(asked.headers).filter((h) => /anthropic|x-api/.test(h)), asked.body.messages[0].content.slice(0, 300));
 await p.screenshot({ path: shot });

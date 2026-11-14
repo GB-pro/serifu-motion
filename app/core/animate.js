@@ -471,7 +471,7 @@ export function visemesFromCamera(au, meta, out = {}) {
   return out;
 }
 
-export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile = null, overrides = [], exaggeration = 1 }) {
+export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile = null, overrides = [], exaggeration = 1, face = null }) {
   const KMn = meta.names.length, NE = EMOS.length, prof = { ...DEFAULT_PROFILE, ...(profile || {}) };
   const r = rng(seed);
   const cuts = []; for (const ov of overrides) for (const x of [ov.start, ov.end]) { const c = Math.round(x * FPS); if (overrides.some((o) => o !== ov && (Math.abs(o.start - x) < 0.02 || Math.abs(o.end - x) < 0.02) && o.emo !== ov.emo) && !cuts.includes(c)) cuts.push(c); } // only where one mark hands over to another with a different feeling
@@ -614,13 +614,18 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
   const gate0 = new Float32Array(T), gate = new Float32Array(T);
   for (let t = 0; t < T; t++) if (an.speech[t]) gate0.fill(1, Math.max(0, t - 4), Math.min(T, t + 4));
   for (let t = 0; t < T; t++) gate[t] = 0.25 * gate0[Math.max(0, t - 1)] + 0.5 * gate0[t] + 0.25 * gate0[Math.min(T - 1, t + 1)];
+  // a face that was filmed with the speech (imported video): while it is in the picture, its mouth shapes go into the
+  // performer in place of the ones guessed from the sound, and its blinks replace the ones the director placed
+  const NV = VISEME.length, seen = (t) => !!(face && face.seen[t]);
+  if (face) { const au = {}, tmpV = {}; for (let t = 0; t < T; t++) if (face.seen[t]) { VISEME.forEach((id, j) => { au[id] = face.mouth[t * NV + j]; }); vis[t] = { ...visemesFromCamera(au, meta, tmpV) }; gate[t] = 1; } }
   // ---- perform ----
   const perf = new Performer({ seed, profile: prof });
   const track = new Float32Array(T * K), emo = new Float32Array(T * NE);
   let ei = 0;
   for (let t = 0; t < T; t++) {
-    while (ei < ev.length && ev[ei].t <= t) perf.event(ev[ei++]);
+    while (ei < ev.length && ev[ei].t <= t) { const e = ev[ei++]; if (e.type === 'blink' && (seen(t) || seen(Math.min(T - 1, t + 6)))) continue; perf.event(e); }
     const y = perf.step({ speaking: an.speech[t], mouth: gate[t], vis: vis[t], browF0: browF0[t], tex: [tex[t * 3], tex[t * 3 + 1], tex[t * 3 + 2]] });
+    if (seen(t)) y[IDX.AU45] = Math.max(y[IDX.AU45], face.blink[t]);
     track.set(y, t * K);
     const ph = phrases.find((p) => t >= p.tp && t < p.t1 + 12);
     if (ph) for (let e = 0; e < NE; e++) emo[t * NE + e] = ph.p[e]; else emo[t * NE] = 1;
