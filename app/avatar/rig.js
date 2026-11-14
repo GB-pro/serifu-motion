@@ -63,14 +63,31 @@ export class Character {
 
   // ---------- head surface (analytic ellipsoid with jaw taper) ----------
   taper(y) { const d = this.d.head; const t = y < 0 ? Math.pow(clamp(-y / d.sy, 0, 1), 1.6) : 0; return 1 - d.jaw * t; }
+  // A block head (design head.block = { p, q }) is a superellipsoid |x/sx|^p + |y/sy|^q + |z/sz|^p = 1: p sets how
+  // square it is seen from above, q how flat its top and bottom are. Without it the head is an ellipsoid (p = q = 2).
   surfZ(x, y) {
     const d = this.d.head; const t = this.taper(y);
-    const x0 = x / (d.sx * t), y0 = y / d.sy;
-    return d.sz * Math.sqrt(Math.max(0.0001, 1 - x0 * x0 - y0 * y0));
+    const x0 = Math.abs(x / (d.sx * t)), y0 = Math.abs(y / d.sy);
+    if (!d.block) return d.sz * Math.sqrt(Math.max(0.0001, 1 - x0 * x0 - y0 * y0));
+    const { p, q } = d.block; return d.sz * Math.pow(Math.max(0.0001, 1 - Math.pow(x0, p) - Math.pow(y0, q)), 1 / p);
   }
   surfNormal(x, y) {
     const d = this.d.head, z = this.surfZ(x, y), t = this.taper(y);
-    return new THREE.Vector3(x / (d.sx * d.sx * t * t), y / (d.sy * d.sy), z / (d.sz * d.sz)).normalize();
+    if (!d.block) return new THREE.Vector3(x / (d.sx * d.sx * t * t), y / (d.sy * d.sy), z / (d.sz * d.sz)).normalize();
+    const { p, q } = d.block, a = d.sx * t, g = (v, k, e) => Math.sign(v) * e * Math.pow(Math.abs(v / k), e - 1) / k;
+    return new THREE.Vector3(g(x, a, p), g(y, d.sy, q), g(z, d.sz, p)).normalize();
+  }
+  // distance from the head centre to the surface along the unit direction u (block heads; used for the head mesh and hair shells)
+  surfR(ux, uy, uz) {
+    const d = this.d.head; if (!d.block) { const k = (ux / d.sx) ** 2 + (uy / d.sy) ** 2 + (uz / d.sz) ** 2; return 1 / Math.sqrt(k); }
+    const { p, q } = d.block, F = (r) => Math.pow(Math.abs(r * ux) / (d.sx * this.taper(r * uy)), p) + Math.pow(Math.abs(r * uy) / d.sy, q) + Math.pow(Math.abs(r * uz) / d.sz, p);
+    let lo = 0, hi = 3; for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (F(m) > 1) hi = m; else lo = m; } return (lo + hi) / 2;
+  }
+  // puts the vertices of a geometry (directions from the head centre) onto the head surface pushed out by off
+  shell(geo, off = 0.06) {
+    const p = geo.attributes.position, v = new THREE.Vector3();
+    for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).normalize(); const r = this.surfR(v.x, v.y, v.z) + off; p.setXYZ(i, v.x * r, v.y * r, v.z * r); }
+    geo.computeVertexNormals(); return geo;
   }
   onFace(x, y, off = 0.004) { const n = this.surfNormal(x, y); return new THREE.Vector3(x, y, this.surfZ(x, y)).addScaledVector(n, off); }
   // The lower face of the head mesh slides down and back with the jaw, and the cheeks push forward in a smile
@@ -108,14 +125,16 @@ export class Character {
       if (t > 0.86) r = sw * Math.cos((t - 0.86) / 0.14 * Math.PI / 2 * 0.92) + 0.001;
       prof.push(new THREE.Vector2(Math.max(0.001, r), t * bodyH));
     }
-    const shirtGeo = new THREE.LatheGeometry(prof, 48);
-    shirtGeo.scale(1, 1, 0.62);
-    const shirt = new THREE.Mesh(shirtGeo, this._mat(d.body.color, { roughness: 0.8, sheen: 0.8, sheenColor: '#ffffff' }));
+    const BD = d.body.depth ?? sw * 0.9; // block body: a box torso (front at z = BD / 2)
+    let shirtGeo;
+    if (d.body.block) { shirtGeo = new THREE.BoxGeometry(sw * 2, bodyH, BD, 12, 16, 6); shirtGeo.translate(0, bodyH / 2, 0); }
+    else { shirtGeo = new THREE.LatheGeometry(prof, 48); shirtGeo.scale(1, 1, 0.62); }
+    const shirt = new THREE.Mesh(shirtGeo, this._mat(d.body.color, d.body.block ? { roughness: 0.85, sheen: 0.25, sheenColor: '#ffffff' } : { roughness: 0.8, sheen: 0.8, sheenColor: '#ffffff' }));
     shirt.position.y = -bodyH;
     this.torso.add(shirt);
     this.shirt = shirt; this.shirtBase = Float32Array.from(shirtGeo.attributes.position.array); this._shrugKey = null;
     this.collar = null;
-    if (d.body.collar) {
+    if (d.body.collar && !d.body.block) {
       const col = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.06, 12, 32), this._mat(d.body.collar, { roughness: 0.7 }));
       col.rotation.x = Math.PI / 2; col.scale.set(1.2, 1, 1); col.position.y = -0.02; this.torso.add(col); this.collar = col;
     }
@@ -123,6 +142,13 @@ export class Character {
     this.arms = [];
     for (const s of [-1, 1]) {
       const arm = new THREE.Group();
+      if (d.body.block) { // a block arm: sleeve above, the hand is the skin-coloured end of the block
+        const aw = d.body.armW ?? sw * 0.5, L = bodyH * 0.98, hl = L * (d.body.hand ?? 0.22);
+        arm.position.set(s * (sw + aw / 2 + 0.01), -0.08, 0);
+        const sl = new THREE.Mesh(new THREE.BoxGeometry(aw, L - hl, BD * 0.98), this._mat(d.body.sleeve || d.body.color, { roughness: 0.85, sheen: 0.25 })); sl.position.y = -(L - hl) / 2 + aw * 0.3; arm.add(sl);
+        const hd = new THREE.Mesh(new THREE.BoxGeometry(aw * 0.98, hl, BD * 0.96), skin); hd.position.y = -(L - hl) + aw * 0.3 - hl / 2; arm.add(hd);
+        this.torso.add(arm); this.arms.push({ g: arm, s, sw: 0, sv: 0, fw: 0, fv: 0, block: true }); continue;
+      }
       arm.position.set(s * sw * 0.92, -0.12, 0);
       const up = new THREE.Mesh(new THREE.CapsuleGeometry(0.11, bodyH * 0.55, 6, 16), this._mat(d.body.sleeve || d.body.color, { roughness: 0.8, sheen: 0.8 }));
       up.position.y = -bodyH * 0.35; arm.add(up);
@@ -135,7 +161,7 @@ export class Character {
       const t = clamp((y + bodyH) / bodyH), i = Math.min(N - 1, Math.floor(t * N)), f = t * N - i;
       return lerp(prof[i].x, prof[i + 1].x, f);
     };
-    this.onShirt = (x, y, off = 0.006) => { const r = this.shirtR(y); return new THREE.Vector3(x, y, 0.62 * Math.sqrt(Math.max(0, r * r - x * x)) + off); };
+    this.onShirt = (x, y, off = 0.006) => { if (d.body.block) return new THREE.Vector3(x, y, BD / 2 + off); const r = this.shirtR(y); return new THREE.Vector3(x, y, 0.62 * Math.sqrt(Math.max(0, r * r - x * x)) + off); };
     for (const f of d.body.front || []) {
       const m = this._mat(f.color, { roughness: f.rough ?? 0.6, sheen: 0.4 });
       if (f.type === 'buttons') {
@@ -167,7 +193,7 @@ export class Character {
     // neck
     this.neck = new THREE.Group(); this.neck.position.y = 0.0; this.torso.add(this.neck);
     const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.23, 0.4, 24), skin);
-    neckMesh.position.y = 0.1; this.neck.add(neckMesh);
+    neckMesh.position.y = 0.1; if (!d.body.block) this.neck.add(neckMesh);
     // ---- head ---- (headPivot = base of the skull: nods swing the whole head in an arc; `head` adds the skull's own tilt)
     this.headPivot = new THREE.Group(); this.headPivot.position.y = 0.06; this.neck.add(this.headPivot);
     this.head = new THREE.Group();
@@ -180,8 +206,8 @@ export class Character {
     this.headBase = new Float32Array(p.array.length);
     for (let i = 0; i < p.count; i++) {
       let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
-      x *= d.head.sx; y *= d.head.sy; z *= d.head.sz;
-      x *= this.taper(y);
+      if (d.head.block) { const r = this.surfR(x, y, z); x *= r; y *= r; z *= r; }
+      else { x *= d.head.sx; y *= d.head.sy; z *= d.head.sz; x *= this.taper(y); }
       // cheek fullness
       for (const s of [-1, 1]) {
         const dx = x - s * 0.5, dy = y + 0.28, dz = z - 0.6;
@@ -336,7 +362,7 @@ export class Character {
     this.nose.position.set(0, n.y, z - 0.04);
     const mesh = new THREE.Mesh(new THREE.SphereGeometry(n.r, 24, 18), this.skinMat);
     mesh.scale.set(n.sx ?? 1.2, n.sy ?? 0.9, n.sz ?? 1.0);
-    this.nose.add(mesh);
+    mesh.visible = !n.hide; this.nose.add(mesh);
     const wr = new THREE.MeshBasicMaterial({ color: '#7a4a3a', transparent: true, opacity: 0 });
     this.noseWrinkle = wr;
     for (let i = 0; i < 2; i++) {
@@ -649,8 +675,8 @@ export class Character {
     this.waist.scale.set(1 - by * 0.25, 1 + by * 0.5, 1 - by * 0.25);
     // arms: rise with the shoulders and keep hanging down while the torso leans and rolls
     for (const arm of this.arms) {
-      arm.g.position.y = -0.12 + shrug * 0.95;
-      arm.g.rotation.set(-lean * 0.85, 0, arm.s * (0.12 + shrug * 0.9) - roll * 0.85);
+      arm.g.position.y = (arm.block ? -0.08 : -0.12) + shrug * 0.95;
+      arm.g.rotation.set(-lean * 0.85, 0, arm.s * ((arm.block ? 0.03 : 0.12) + shrug * (arm.block ? 0.3 : 0.9)) - roll * 0.85);
     }
     this._updateDyn(dt);
   }
