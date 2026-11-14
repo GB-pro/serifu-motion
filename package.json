@@ -11,6 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "@mediapipe/tasks-vision": "^0.10.14",
+    "onnxruntime-node": "^1.31.1",
+    "onnxruntime-web": "^1.31.1",
     "three": "^0.160.0"
   }
 }

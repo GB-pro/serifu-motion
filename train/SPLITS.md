@@ -158,3 +158,9 @@ Measures of the final check, with the app's own code at the frozen commit, six c
 own; all lines of a speaker as one long recording; live, the emotion played at the end of the line. For FLEURS the
 share of lines read as neutral. The networks of iteration 5 are measured on the same material at the same time, as
 the "before". The marks are written here before the freeze, from development results only.
+
+**JVNV became reachable** on 2026-11-14 at about 09:15 JST (the owner of the project allowed the host). It is used
+as fixed above, before anything was measured on it: speakers F1 and M1 (578 lines in five of the six classes; JVNV
+has no neutral lines, and surprise is left out) go into training "open", speakers F2 and M2 (731 lines) into the
+final check. Its licence (CC BY-SA 4.0, stated in the readme of the corpus) allows use in the published app with
+attribution.
