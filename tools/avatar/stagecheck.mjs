@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+import fs from 'fs';
+const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const p = await b.newPage({ viewport: { width: 960, height: 540 } });
+p.on('pageerror', e => console.log('ERR', e.message)); p.on('console', m => { if (m.type() === 'error') console.log('console', m.text()); });
+await p.goto('http://127.0.0.1:8765/render.html'); await p.waitForFunction('window.READY', null, { timeout: 60000 });
+const avatars = JSON.parse(process.argv[3] || '["hana"]'), view = process.argv[4] ? JSON.parse(process.argv[4]) : null;
+const t = await p.evaluate(([a, v]) => { const t0 = performance.now(); window.setup(a, v); return performance.now() - t0; }, [avatars, view]);
+const K = await p.evaluate(async () => { const m = await import('./core/au.js'); return [m.K, m.IDS]; });
+const fr = new Array(K[0]).fill(0); const set = (k, v) => { fr[K[1].indexOf(k)] = v; }; set('AU12', 0.8); set('AU6', 0.5); set('headYaw', 12); set('headRoll', 5);
+await p.evaluate(([f, n]) => window.setTracks(Array.from({ length: n }, () => f)), [fr, avatars.length]);
+const url = await p.evaluate(() => window.renderFrame(0));
+fs.writeFileSync(process.argv[2], Buffer.from(url.split(',')[1], 'base64')); console.log('setup ms', Math.round(t)); await b.close();
