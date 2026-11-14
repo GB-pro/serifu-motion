@@ -216,13 +216,13 @@ class App {
       const t0 = performance.now();
       show(t('faceTracking')); this.faceBusy = true;
       try {
-        const res = await trackVideoFace(file, T, '', (u) => show(`${t('faceTracking')} ${Math.round(u * 100)}%`), k);
+        const res = await trackVideoFace(file, T, '', (u, why) => show(`${t('faceTracking')} ${Math.round(u * 100)}%${why === 'hidden' ? ' — ' + t('faceHidden') : ''}`), k);
         const tracks = k === 1 ? (res ? [res] : []) : res || [];
         const faceOf = k === 1 ? [tracks[0] || null] : (tracks.length ? matchFaces(tracks, segments, k, T).map((i) => (i >= 0 ? tracks[i] : null)) : []);
         console.info('faces', tracks.map((q) => q.x.toFixed(2)), 'took', ((performance.now() - t0) / 1000).toFixed(1), 's', trackVideoFace.last);
         let any = false;
         sps.forEach((sp, j) => { if (faceOf[j] && this.project.speakers.includes(sp)) { sp.face = faceOf[j]; this.redirect(sp); any = true; } });
-        if (any) { this.timeline.draw(); this.applyFrame(this.time); }
+        if (any) { this.stage.inward = 0; this.stage.setCharacters(this.project.speakers.map((q) => q.avatar)); this.timeline.draw(); this.applyFrame(this.time); }
         this.loadInfo('face');
       } catch (e) { console.warn('face tracking', e); this.loadInfo('done'); }
       this.faceBusy = false;
@@ -320,7 +320,7 @@ class App {
   }
   afterChange() {
     if (!this.selected || !this.project.speakers.includes(this.selected)) this.selected = this.project.speakers[0] || null;
-    this.stage.setCharacters(this.project.speakers.map((s) => s.avatar));
+    this.stage.inward = this.project.speakers.some((s) => s.face && s.face.pose) ? 0 : 0.28; this.stage.setCharacters(this.project.speakers.map((s) => s.avatar));
     this.playBuf = null; if (this.timeline) this.timeline.reselect();
     this.renderPanel(); this.timeline.draw(); this.applyFrame(this.time);
   }

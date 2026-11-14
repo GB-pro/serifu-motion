@@ -686,7 +686,7 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
       for (let j = 0; j < NP; j++) { const v = []; for (let u = t - 4; u <= t + 4; u++) if (u >= 0 && u < T && face.seen[u]) v.push(P[u * NP + j]); fp[t * NP + j] = v.length ? med(v) - base[j] : 0; }
     }
     // a light glide over the medians, and a fade in and out where the face comes and goes
-    for (let j = 0; j < NP; j++) { const k = j >= 3 ? 0.18 : 0.3; for (let pass = 0; pass < 2; pass++) { let prev = fp[(pass ? T - 1 : 0) * NP + j]; for (let i = 0; i < T; i++) { const t = pass ? T - 1 - i : i, c = fp[t * NP + j]; prev += (c - prev) * k; fp[t * NP + j] = prev; } } } // forward and back: no lag
+    for (let j = 0; j < NP; j++) { const k = j >= 3 ? 0.18 : 0.42; for (let pass = 0; pass < 2; pass++) { let prev = fp[(pass ? T - 1 : 0) * NP + j]; for (let i = 0; i < T; i++) { const t = pass ? T - 1 - i : i, c = fp[t * NP + j]; prev += (c - prev) * k; fp[t * NP + j] = prev; } } } // forward and back: no lag
     const fw = new Float32Array(T); for (let t = 0; t < T; t++) { let s = 0, n = 0; for (let u = t - 6; u <= t + 6; u++) if (u >= 0 && u < T) { s += w[u]; n++; } fw[t] = s / n; }
     fp.w = fw;
   }
@@ -700,7 +700,9 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
     if (seen(t)) y[IDX.AU45] = Math.max(y[IDX.AU45], fblink[t]);
     if (fp && fp.w[t] > 0) {
       const w = fp.w[t], o = t * 5, mix = (k, v, keep) => { y[k] = (1 - w) * y[k] + w * (v + keep * y[k]); };
-      mix(IDX.headYaw, clamp(fp[o] * 0.75, -35, 35), 0.3); mix(IDX.headPitch, clamp(fp[o + 1] * 0.9, -25, 25), 0.4); mix(IDX.headRoll, clamp(fp[o + 2] * 0.8, -20, 20), 0.35);
+      // the filmed angles one to one (the person's wish: the head matches the video in every direction); the director's
+      // own small nods stay on top, smaller
+      mix(IDX.headYaw, clamp(fp[o], -60, 60), 0.15); mix(IDX.headPitch, clamp(fp[o + 1], -35, 35), 0.2); mix(IDX.headRoll, clamp(fp[o + 2], -30, 30), 0.15);
       mix(IDX.gazeX, clamp(fp[o + 3], -1, 1), 0.25); mix(IDX.gazeY, clamp(fp[o + 4], -1, 1), 0.25);
     }
     track.set(y, t * K);

@@ -38,14 +38,14 @@ export class Stage {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
   }
   setCharacters(keys) {
-    const sig = keys.join(',');
+    const sig = keys.join(',') + '|' + (this.inward ?? 0.28);
     if (sig === this._sig) return; this._sig = sig;
     for (const c of this.chars) this.scene.remove(c.root);
     this.chars = keys.map((k) => createCharacter(k));
     const n = this.chars.length, gap = 2.5;
     this.chars.forEach((c, i) => {
       c.root.position.x = (i - (n - 1) / 2) * gap;
-      c.root.rotation.y = n > 1 ? -((i - (n - 1) / 2) / Math.max(1, (n - 1) / 2)) * 0.28 : 0;
+      c.root.rotation.y = n > 1 ? -((i - (n - 1) / 2) / Math.max(1, (n - 1) / 2)) * (this.inward ?? 0.28) : 0; // turned a little toward each other (not when the video gives the head's turn)
       this.scene.add(c.root);
     });
     this._frame();

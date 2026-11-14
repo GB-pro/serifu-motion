@@ -73,10 +73,17 @@ export async function trackVideoFace(file, T, base = '', onProgress = null, face
     const dur = Math.min(T / FPS, v.duration || T / FPS), N = Math.min(T, Math.floor(dur * FPS));
     // first pass: play it through at double speed and look at every picture the browser hands over
     if (v.requestVideoFrameCallback) await new Promise((done) => {
-      let over = false; const end = () => { if (!over) { over = true; done(); } }; v.onended = end; v.onerror = end;
+      let over = false; let end = () => { if (!over) { over = true; done(); } };
       // the playback runs as fast as the tracker can look at every second picture: much faster than seeking to the
       // missed ones afterwards (each seek decodes the video again from the last key picture)
-      const cb = (now, meta) => { look(meta.mediaTime); if (cost) v.playbackRate = Math.max(0.1, Math.min(2, (2 / FPS) / (cost / 1000) * 0.9)); onProgress && onProgress(0.5 * Math.min(1, meta.mediaTime / dur)); if (!v.ended && meta.mediaTime < dur - 0.05) v.requestVideoFrameCallback(cb); else end(); };
+      // the browser stops playing a video in a tab that is not shown: pause with it, carry on when the tab is back, and
+      // if the pictures stop coming for another reason, go on with what was seen (the second pass fills the gaps)
+      let last = performance.now(), hiddenAt = 0;
+      const onVis = () => { if (document.hidden) { hiddenAt = performance.now(); v.pause(); onProgress && onProgress(0.5 * Math.min(1, v.currentTime / dur), 'hidden'); } else { last = performance.now(); v.play().catch(() => {}); } };
+      document.addEventListener('visibilitychange', onVis);
+      const dog = setInterval(() => { if (over || document.hidden) return; const idle = performance.now() - last; if (idle > 3000 && v.paused) v.play().catch(() => {}); if (idle > 8000) end(); }, 1000);
+      const end0 = end; end = () => { clearInterval(dog); document.removeEventListener('visibilitychange', onVis); end0(); }; v.onended = end; v.onerror = end;
+      const cb = (now, meta) => { last = performance.now(); look(meta.mediaTime); if (cost) v.playbackRate = Math.max(0.1, Math.min(2, (2 / FPS) / (cost / 1000) * 0.9)); onProgress && onProgress(0.5 * Math.min(1, meta.mediaTime / dur)); if (!v.ended && meta.mediaTime < dur - 0.05) v.requestVideoFrameCallback(cb); else end(); };
       v.requestVideoFrameCallback(cb); v.playbackRate = 2; v.play().catch(end);
     });
     v.pause(); v.onended = null;
@@ -84,8 +91,9 @@ export async function trackVideoFace(file, T, base = '', onProgress = null, face
     // missing and look at it (a blink lasts 4 to 6 pictures, so every second one is enough to catch it)
     const todo = []; for (let t = 0; t < N; t += 2) if (!got[t] && !got[t + 1]) todo.push(t);
     const until = performance.now() + (trackVideoFace.maxSeconds || Math.max(45, 1.5 * dur)) * 1000; // a slow device stops here and uses what it has seen
-    for (let k = 0; k < todo.length && performance.now() < until; k++) {
+    for (let k = 0; k < todo.length && (performance.now() < until || trackVideoFace.maxSeconds === Infinity); k++) {
       const t = todo[k];
+      if (document.hidden) { onProgress && onProgress(0.5 + 0.5 * k / todo.length, 'hidden'); await new Promise((ok) => { const f = () => { if (!document.hidden) { document.removeEventListener('visibilitychange', f); ok(); } }; document.addEventListener('visibilitychange', f); }); }
       await new Promise((ok) => { const tm = setTimeout(ok, 2000); v.onseeked = () => { clearTimeout(tm); ok(); }; v.currentTime = Math.min(dur - 0.01, t / FPS + 0.001); });
       look(t / FPS); onProgress && onProgress(0.5 + 0.5 * (k + 1) / todo.length);
     }
