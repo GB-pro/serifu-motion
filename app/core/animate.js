@@ -481,6 +481,30 @@ export function visemesFromCamera(au, meta, out = {}) {
   return out;
 }
 
+// ---------- no trembling, anywhere ----------
+// Small fast back-and-forth in any channel looks like a twitch. An adaptive low-pass (the "one euro" filter) smooths
+// small quick changes hard and lets big deliberate moves through: its cut-off rises with the speed of the change.
+// Blinks (AU45) are left alone; the mouth channels get a higher floor so syllables stay crisp.
+const MOUTH_K = new Set(['AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24', 'AU28', 'AU25', 'AU23', 'AU17', 'AU15', 'AU12', 'AU14'].map((id) => IDX[id]).filter((k) => k != null));
+const JIT = CHANNELS.map((c, k) => { const r = c.range ? Math.max(1e-3, c.range[1] - c.range[0]) : 1; return { r, fmin: IDS[k] === 'AU45' ? 0 : MOUTH_K.has(k) ? 3.2 : 1.6, beta: 6 }; });
+const alphaOf = (fc) => { const tau = 1 / (2 * Math.PI * fc), te = 1 / FPS; return 1 / (1 + tau / te); };
+export class Dejitter {
+  constructor() { this.x = null; this.d = new Float32Array(K); }
+  step(y) {
+    if (!this.x) { this.x = Float32Array.from(y); return y; }
+    for (let k = 0; k < K; k++) { const j = JIT[k]; if (!j.fmin) { this.x[k] = y[k]; continue; }
+      const dx = (y[k] - this.x[k]) * FPS; this.d[k] += (dx - this.d[k]) * alphaOf(1.0);
+      const fc = j.fmin + j.beta * Math.abs(this.d[k]) / j.r; this.x[k] += (y[k] - this.x[k]) * alphaOf(fc); y[k] = this.x[k]; }
+    return y;
+  }
+}
+// offline: run the filter forward and backward and average, so nothing lags behind the voice
+export function dejitter(track, T) {
+  const f = new Float32Array(track.length), fw = new Dejitter(), bw = new Dejitter(), y = new Float32Array(K);
+  for (let t = 0; t < T; t++) { y.set(track.subarray(t * K, t * K + K)); f.set(fw.step(y), t * K); }
+  for (let t = T - 1; t >= 0; t--) { y.set(track.subarray(t * K, t * K + K)); const b = bw.step(y); for (let k = 0; k < K; k++) track[t * K + k] = JIT[k].fmin ? 0.5 * (f[t * K + k] + b[k]) : track[t * K + k]; }
+}
+
 export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile = null, overrides = [], exaggeration = 1, face = null, vowels = null }) {
   const KMn = meta.names.length, NE = EMOS.length, prof = { ...DEFAULT_PROFILE, ...(profile || {}) };
   const r = rng(seed);
@@ -632,7 +656,22 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
   // a face that was filmed with the speech (imported video): while it is in the picture, its mouth shapes go into the
   // performer in place of the ones guessed from the sound, and its blinks replace the ones the director placed
   const NV = VISEME.length, seen = (t) => !!(face && face.seen[t]);
-  if (face) { const au = {}, tmpV = {}; for (let t = 0; t < T; t++) if (face.seen[t]) { VISEME.forEach((id, j) => { au[id] = face.mouth[t * NV + j]; }); vis[t] = { ...visemesFromCamera(au, meta, tmpV) }; gate[t] = 1; } }
+  // With the vowels heard in the voice, the shape of the mouth stays theirs (the tracker reads the shape of a small or
+  // half-turned face poorly); the filmed face only nudges how far it opens. Without them the filmed mouth is used.
+  if (face) { const au = {}, tmpV = {}, md = (t, j) => { const v = []; for (let u = t - 1; u <= t + 1; u++) if (u >= 0 && u < T && face.seen[u]) v.push(face.mouth[u * NV + j]); v.sort((a, b) => a - b); return v.length ? v[v.length >> 1] : 0; };
+    for (let t = 0; t < T; t++) if (face.seen[t]) { VISEME.forEach((id, j) => { au[id] = md(t, j); }); const fv = visemesFromCamera(au, meta, tmpV);
+      if (vowels) { if (an.speech[t] || gate[t] > 0.5) vis[t].AU26 = 0.7 * vis[t].AU26 + 0.3 * fv.AU26; }
+      else { vis[t] = { ...fv }; gate[t] = 1; } } }
+  // the filmed blinks, cleaned: only a clear close-and-open (a short run of shut frames between open ones) counts, and
+  // it is played with a smooth blink shape; everything else the tracker reports (half-shut flicker, glasses glare) is dropped
+  const fblink = new Float32Array(T);
+  if (face) for (let t = 0; t < T;) {
+    if (face.seen[t] && face.blink[t] > 0.6) { let e = t; while (e < T && face.seen[e] && face.blink[e] > 0.35) e++;
+      const before = t > 0 && face.seen[t - 1] && face.blink[t - 1] < 0.35, after = e < T && face.seen[e];
+      if (before && after && e - t <= 10) { const S = [0.35, 0.8, 1], E = [0.75, 0.45, 0.2]; for (let i = 0; i < 3; i++) { if (t - 1 + i < T) fblink[t - 1 + i] = Math.max(fblink[t - 1 + i], S[i]); }
+        for (let u = t + 2; u < e; u++) fblink[u] = 1; for (let i = 0; i < 3; i++) if (e + i < T) fblink[e + i] = Math.max(fblink[e + i], E[i]); }
+      t = e; } else t++;
+  }
   // where the filmed face turns its head and looks (toward the other person or away): taken as the base of the head's
   // direction and of the gaze, smoothed; the director's own nods and accents stay on top at a smaller size. The tilt
   // and the up-down of the head and eyes are measured from the person's usual position (the camera may sit high or low,
@@ -647,7 +686,7 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
       for (let j = 0; j < NP; j++) { const v = []; for (let u = t - 4; u <= t + 4; u++) if (u >= 0 && u < T && face.seen[u]) v.push(P[u * NP + j]); fp[t * NP + j] = v.length ? med(v) - base[j] : 0; }
     }
     // a light glide over the medians, and a fade in and out where the face comes and goes
-    for (let pass = 0; pass < 2; pass++) for (let j = 0; j < NP; j++) { let prev = fp[j]; for (let t = 0; t < T; t++) { const c = fp[t * NP + j]; prev += (c - prev) * 0.45; fp[t * NP + j] = prev; } }
+    for (let j = 0; j < NP; j++) { const k = j >= 3 ? 0.18 : 0.3; for (let pass = 0; pass < 2; pass++) { let prev = fp[(pass ? T - 1 : 0) * NP + j]; for (let i = 0; i < T; i++) { const t = pass ? T - 1 - i : i, c = fp[t * NP + j]; prev += (c - prev) * k; fp[t * NP + j] = prev; } } } // forward and back: no lag
     const fw = new Float32Array(T); for (let t = 0; t < T; t++) { let s = 0, n = 0; for (let u = t - 6; u <= t + 6; u++) if (u >= 0 && u < T) { s += w[u]; n++; } fw[t] = s / n; }
     fp.w = fw;
   }
@@ -658,7 +697,7 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
   for (let t = 0; t < T; t++) {
     while (ei < ev.length && ev[ei].t <= t) { const e = ev[ei++]; if (e.type === 'blink' && (seen(t) || seen(Math.min(T - 1, t + 6)))) continue; perf.event(e); }
     const y = perf.step({ speaking: an.speech[t], mouth: gate[t], vis: vis[t], browF0: browF0[t], tex: [tex[t * 3], tex[t * 3 + 1], tex[t * 3 + 2]] });
-    if (seen(t)) y[IDX.AU45] = Math.max(y[IDX.AU45], face.blink[t]);
+    if (seen(t)) y[IDX.AU45] = Math.max(y[IDX.AU45], fblink[t]);
     if (fp && fp.w[t] > 0) {
       const w = fp.w[t], o = t * 5, mix = (k, v, keep) => { y[k] = (1 - w) * y[k] + w * (v + keep * y[k]); };
       mix(IDX.headYaw, clamp(fp[o] * 0.75, -35, 35), 0.3); mix(IDX.headPitch, clamp(fp[o + 1] * 0.9, -25, 25), 0.4); mix(IDX.headRoll, clamp(fp[o + 2] * 0.8, -20, 20), 0.35);
@@ -668,6 +707,7 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
     const ph = phrases.find((p) => t >= p.tp && t < p.t1 + 12);
     if (ph) for (let e = 0; e < NE; e++) emo[t * NE + e] = ph.p[e]; else emo[t * NE] = 1;
   }
+  dejitter(track, T);
   const plan = { phrases: phrases.map((ph) => ({ t0: ph.t0, t1: ph.t1, tp: ph.tp, emo: ph.emo, emo2: ph.emo2, w2: +ph.w2.toFixed(2), conf: +ph.conf.toFixed(3), inten: +ph.inten.toFixed(3), fixed: !!ph.fixed, auto: { emo: ph.auto.emo, conf: +ph.auto.conf.toFixed(3) }, p: ph.p.map((v) => +v.toFixed(3)), pose: POSES[ph.emo][ph.variant].name, side: ph.side, question: ph.question, accents: ph.accents.filter((a) => a.kind).map((a) => ({ t: a.t, kind: a.kind, strength: +a.strength.toFixed(2), key: a.key })) })), events: ev.length };
   return { track, emo, plan, speech: an.speech };
 }
@@ -687,7 +727,7 @@ export class LiveDirector {
     // how much more likely a new reading must be than the feeling being played before the pose follows it
     // (at the first re-reading after 8 speech frames, and at the later ones); set on the validation speakers
     this.switchMargins = opts.switchMargins || [0.03, 0.08];
-    this.perf = new Performer({ seed: this.seed, profile: this.prof });
+    this.perf = new Performer({ seed: this.seed, profile: this.prof }); this.dj = new Dejitter();
     this.NE = EMOS.length;
     this.t = 0; this.sil = 99; this.inPhrase = false; this.phraseT = 0;
     this.ctx = new Float32Array(this.NE).fill(1 / this.NE); // slow context of the conversation
@@ -822,6 +862,6 @@ export class LiveDirector {
     // a camera sees the mouth itself, so its shape is shown whether or not the microphone hears a voice;
     // the mouth made from the voice alone is only shown while there is speech
     const inp = { speaking: voiced, vis, browF0: this.browF0 }; if (camVis) inp.mouth = 1;
-    return perf.step(inp);
+    return this.dj.step(perf.step(inp)); // no trembling in live either
   }
 }

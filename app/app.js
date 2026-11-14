@@ -78,9 +78,9 @@ class App {
     });
     const stageEl = $('#stagewrap') || $('.stagewrap');
     stageEl.addEventListener('dragover', (e) => e.preventDefault());
-    stageEl.addEventListener('drop', (e) => { e.preventDefault(); this.addSeparate([...e.dataTransfer.files]); });
+    stageEl.addEventListener('drop', (e) => { e.preventDefault(); this.addDropped([...e.dataTransfer.files]); });
     $('#timeline').addEventListener('dragover', (e) => e.preventDefault());
-    $('#timeline').addEventListener('drop', (e) => { e.preventDefault(); this.addSeparate([...e.dataTransfer.files]); });
+    $('#timeline').addEventListener('drop', (e) => { e.preventDefault(); this.addDropped([...e.dataTransfer.files]); });
     // emotion dialog
     const ch = $('#emoChoices');
     for (const e of EMOS) { const b = document.createElement('button'); b.type = 'button'; b.dataset.emo = e; b.style.background = EMO_COLORS[e]; b.onclick = () => { ch.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); }; ch.appendChild(b); }
@@ -112,10 +112,29 @@ class App {
     const r = await oc.startRendering();
     return r.getChannelData(0).slice(0);
   }
+  // dropped files: one file is taken as a conversation (split into speakers; if only one voice is found it stays one
+  // speaker), several files as one speaker each
+  addDropped(files) {
+    files = files.filter((f) => /audio|video/.test(f.type) || /\.(wav|mp3|m4a|aac|ogg|flac|mp4|mov|webm)$/i.test(f.name));
+    if (files.length === 1) return this.addMixed(files[0], Math.max(2, +$('#nSpk').value || 2));
+    return this.addSeparate(files);
+  }
+  // how long the import took, kept on screen until the next one
+  loadInfo(stage, extra = '') {
+    const el = $('#faceInfo'), s = (ms) => Math.max(1, Math.round(ms / 1000));
+    if (stage === 'start') { this.loadT = { t0: performance.now() }; el.hidden = true; return; }
+    const L = this.loadT; if (!L) return;
+    if (stage === 'voice') L.voice = performance.now() - L.t0;
+    if (stage === 'face') L.face = performance.now() - L.t0 - L.voice;
+    const parts = [`${t('loadVoice')} ${s(L.voice)} ${t('sec')}`];
+    if (L.face != null) parts.push(`${t('loadFace')} ${s(L.face)} ${t('sec')}`);
+    el.textContent = (L.face != null || stage === 'done' ? `${t('loadDone')} ${s((L.voice || 0) + (L.face || 0))} ${t('sec')}（${parts.join(' + ')}）` : `${parts[0]}。${extra}`);
+    el.hidden = false;
+  }
   async addSeparate(files) {
     files = files.filter((f) => /audio|video/.test(f.type) || /\.(wav|mp3|m4a|aac|ogg|flac|mp4|mov|webm)$/i.test(f.name));
     if (!files.length) return;
-    this.pushUndo();
+    this.pushUndo(); this.loadInfo('start');
     for (const f of files) {
       this.busy(t('analyzing') + ' ' + f.name);
       await sleep(30);
@@ -131,11 +150,12 @@ class App {
     }
     this.padSpeakers();
     this.afterChange(); this.busy(null);
+    this.loadInfo(files.some(isVideo) ? 'voice' : 'voice', files.some(isVideo) ? t('faceTracking') : ''); if (!files.some(isVideo)) this.loadInfo('done');
     await this.understand(this.project.speakers.slice(-files.length), true);
   }
   async addMixed(file, k) {
     if (!file) return;
-    this.pushUndo();
+    this.pushUndo(); this.loadInfo('start');
     this.busy(t('analyzing')); await sleep(30);
     const x = await this.decode(file); this.setReference(file);
     // who speaks when: the voiceprint network in the worker; the older split by pitch and timbre if it cannot run
@@ -144,10 +164,14 @@ class App {
       this.stt = this.stt || new SpeechToText();
       segments = await this.stt.speakers(x, k, (m) => this.busy(m.what === 'speakers' ? `${t('spkLoading')} ${Math.round(m.loaded / 1e6)} / ${Math.round(m.total / 1e6)} MB` : `${t('spkSplitting')} ${Math.round(m.u * 100)}%`));
     } catch (e) { console.warn('speaker split fell back:', e); segments = diarize(x, k).segments; }
+    // a voice that has almost nothing to say is not a speaker of its own (a monologue split in two): it joins the others
+    { const dur = new Array(k).fill(0); for (const sg of segments) if (sg.speaker >= 0 && sg.speaker < k) dur[sg.speaker] += sg.end - sg.start;
+      const tot = dur.reduce((a, b) => a + b, 0) || 1, keep = dur.map((d) => d / tot >= 0.07), map = []; let n = 0; for (let j = 0; j < k; j++) map[j] = keep[j] ? n++ : -1;
+      if (n >= 1 && n < k) { const big = dur.indexOf(Math.max(...dur)); segments = segments.map((sg) => ({ ...sg, speaker: map[sg.speaker] >= 0 ? map[sg.speaker] : map[big] })); k = n; } }
     const n0 = this.project.speakers.length;
     for (let j = 0; j < k; j++) {
-      const a = new Float32Array(x.length);
-      for (const s of segments) if (s.speaker === j) {
+      const a = k === 1 ? x.slice() : new Float32Array(x.length);
+      if (k > 1) for (const s of segments) if (s.speaker === j) {
         const s0 = Math.floor(s.start * SR), s1 = Math.min(x.length, Math.ceil(s.end * SR)), fade = 800;
         for (let i = s0; i < s1; i++) { const w = Math.min(1, (i - s0) / fade, (s1 - i) / fade); a[i] = x[i] * w; }
       }
@@ -160,6 +184,7 @@ class App {
     }
     this.padSpeakers();
     this.afterChange(); this.busy(null);
+    this.loadInfo('voice', isVideo(file) ? t('faceTracking') : ''); if (!isVideo(file)) this.loadInfo('done');
     // a video of the conversation: each person's face is read in the background, and each voice gets the face whose
     // mouth moves while that voice speaks
     if (isVideo(file)) this.watchFaces(file, Math.max(1, Math.floor(x.length / SR * FPS)), this.project.speakers.slice(n0, n0 + k), segments, k);
@@ -168,7 +193,7 @@ class App {
   // Reading the faces in a video takes a while (the face tracker runs on every picture), so it does not hold up the
   // work: the speakers are made from the voice first, and the faces are applied when they are ready. One video at a time.
   watchFaces(file, T, sps, segments, k) {
-    const info = $('#faceInfo'), show = (msg) => { info.textContent = msg || ''; info.hidden = !msg; };
+    const show = (msg) => { if (msg === null) return; this.loadInfo('progress', msg); };
     this.faceQueue = (this.faceQueue || Promise.resolve()).then(async () => {
       const t0 = performance.now();
       show(t('faceTracking')); this.faceBusy = true;
@@ -179,8 +204,9 @@ class App {
         console.info('faces', tracks.map((q) => q.x.toFixed(2)), 'took', ((performance.now() - t0) / 1000).toFixed(1), 's', trackVideoFace.last);
         let any = false;
         sps.forEach((sp, j) => { if (faceOf[j] && this.project.speakers.includes(sp)) { sp.face = faceOf[j]; this.redirect(sp); any = true; } });
-        if (any) { this.timeline.draw(); this.applyFrame(this.time); show(`${t('faceDone')} (${Math.round((performance.now() - t0) / 1000)} s)`); setTimeout(() => show(''), 6000); } else show('');
-      } catch (e) { console.warn('face tracking', e); show(''); }
+        if (any) { this.timeline.draw(); this.applyFrame(this.time); }
+        this.loadInfo('face');
+      } catch (e) { console.warn('face tracking', e); this.loadInfo('done'); }
       this.faceBusy = false;
     });
     return this.faceQueue;

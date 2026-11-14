@@ -95,7 +95,9 @@ export class LiveSession {
   _compose(src) {
     const y = Float32Array.from(src), au = this.delay > 0 ? this.lateAU : this.faceSeen ? this.camAU : null;
     if (au) {
-      if (this.useCamBlink) y[IDX.AU45] = Math.max(0, Math.min(1, (au.AU45 - 0.12) / 0.55)); // the tracker reports about 0.12 with open eyes
+      if (this.useCamBlink) { // a clear close or open only (hysteresis), played smoothly: the raw value flickers (glasses, light)
+        const raw = Math.max(0, Math.min(1, (au.AU45 - 0.12) / 0.55)); // the tracker reports about 0.12 with open eyes
+        this._blT = raw > 0.6 ? 1 : raw < 0.35 ? 0 : (this._blT || 0); this._bl = (this._bl || 0) + (this._blT - (this._bl || 0)) * 0.55; y[IDX.AU45] = this._bl; }
       if (this.useCamMouth && this.style === 'natural') { const v = visemesFromCamera(au, this.emo.meta, this._vis2 || (this._vis2 = {})); for (const id of CAM_MOUTH) y[IDX[id]] = Math.min(1, v[id]); }
     }
     return y;

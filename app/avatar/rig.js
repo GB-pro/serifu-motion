@@ -271,10 +271,7 @@ export class Character {
       irisGeo.rotateX(Math.PI / 2);
       planarUV(irisGeo, r * Math.sin(capA));
       const iris = new THREE.Mesh(irisGeo, irisMat); ball.add(iris);
-      // glints (fixed to the head, they do not rotate with the eyeball)
-      const glMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.95 });
-      const gl1 = new THREE.Mesh(new THREE.SphereGeometry(irisR * 0.24, 12, 8), glMat); gl1.position.set(-irisR * 0.42, irisR * 0.5, r * 0.985); gl1.scale.z = 0.25; sq.add(gl1);
-      const gl2 = new THREE.Mesh(new THREE.SphereGeometry(irisR * 0.11, 10, 8), glMat); gl2.position.set(irisR * 0.4, -irisR * 0.36, r * 0.99); gl2.scale.z = 0.25; sq.add(gl2);
+      // no painted highlights in the eyes: the moving iris catches the light of the scene by itself (the person's wish)
       // lids: hemispherical shells rotating about the eye centre
       const upGeo = new THREE.SphereGeometry(r * 1.02, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2);
       const up = new THREE.Mesh(upGeo, lidMat); const upP = new THREE.Group(); upP.add(up); sq.add(upP);
@@ -284,7 +281,7 @@ export class Character {
       const loGeo = new THREE.SphereGeometry(r * 1.016, 48, 20, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
       const lo = new THREE.Mesh(loGeo, lidMat); const loP = new THREE.Group(); loP.add(lo); sq.add(loP);
       const lids = [[up, upP], [lo, loP]].map(([mesh, pivot]) => ({ mesh, pivot, base: Float32Array.from(mesh.geometry.attributes.normal.array), key: null }));
-      this.eyes.push({ g, sq, ball, upP, loP, lids, s, iris, glints: [gl1, gl2], splay: (e.splay ?? 0.12), r, capA, irisKey: 100 });
+      this.eyes.push({ g, sq, ball, upP, loP, lids, s, iris, glints: [], splay: (e.splay ?? 0.12), r, capA, irisKey: 100 });
     }
   }
 

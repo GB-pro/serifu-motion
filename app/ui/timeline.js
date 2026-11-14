@@ -18,6 +18,7 @@ export class Timeline {
     this.drag = null; this.layout = [];
     this._bind();
     new ResizeObserver(() => this.draw()).observe(el);
+    this._bars();
   }
   get project() { return this.app.project; }
   x2t(x) { return (x - HEAD_W) / this.pxPerSec + this.scrollX; }
@@ -39,6 +40,31 @@ export class Timeline {
   chRange(id) { const c = CHANNELS[IDX[id]]; return c.range; }
   v2y(l, v) { const [a, b] = this.chRange(l.id); return l.y + l.h - 4 - (v - a) / (b - a) * (l.h - 8); }
   y2v(l, y) { const [a, b] = this.chRange(l.id); return a + (l.y + l.h - 4 - y) / (l.h - 8) * (b - a); }
+
+  // the two scroll bars: across (time) and down (speakers and channels)
+  _bars() {
+    const H = document.getElementById('tlH'), V = document.getElementById('tlV'); if (!H || !V) return;
+    this.el.addEventListener('scroll', () => this._barsUpdate());
+    const grab = (bar, horiz) => bar.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); bar.setPointerCapture(e.pointerId); bar.classList.add('drag');
+      const r = bar.getBoundingClientRect(), th = bar.firstElementChild.getBoundingClientRect();
+      const len = horiz ? r.width : r.height, tl = horiz ? th.width : th.height, at = (horiz ? e.clientX - th.left : e.clientY - th.top);
+      const off = at >= 0 && at <= tl ? at : tl / 2; // on the handle: keep the grip; elsewhere: the handle jumps there, centred
+      const go = (ev) => { const u = Math.max(0, Math.min(1, ((horiz ? ev.clientX - r.left : ev.clientY - r.top) - off) / Math.max(1, len - tl)));
+        if (horiz) { const view = (this.el.clientWidth - HEAD_W) / this.pxPerSec, total = Math.max(view, this.duration() + 1); this.scrollX = u * (total - view); this.draw(); }
+        else { this.el.scrollTop = u * (this.el.scrollHeight - this.el.clientHeight); } };
+      go(e); bar.onpointermove = go; bar.onpointerup = bar.onpointercancel = () => { bar.onpointermove = null; bar.classList.remove('drag'); };
+    });
+    grab(H, true); grab(V, false);
+  }
+  _barsUpdate() {
+    const H = document.getElementById('tlH'), V = document.getElementById('tlV'); if (!H || !V) return;
+    const view = (this.el.clientWidth - HEAD_W) / this.pxPerSec, total = Math.max(view, this.duration() + 1, this.scrollX + view);
+    const hw = view / total, hl = this.scrollX / total, ht = H.firstElementChild;
+    ht.style.width = (hw * 100) + '%'; ht.style.left = (Math.min(1 - hw, hl) * 100) + '%'; H.style.opacity = hw >= 0.999 ? 0.4 : 1;
+    const sh = this.el.scrollHeight, ch = this.el.clientHeight, vw = Math.min(1, ch / Math.max(1, sh)), vt = V.firstElementChild;
+    vt.style.height = (vw * 100) + '%'; vt.style.top = ((1 - vw) * (sh > ch ? this.el.scrollTop / (sh - ch) : 0) * 100) + '%'; V.style.opacity = vw >= 0.999 ? 0.4 : 1;
+  }
 
   _bind() {
     const c = this.canvas;
@@ -152,6 +178,9 @@ export class Timeline {
   }
 
   draw() {
+    this._drawInner(); this._barsUpdate();
+  }
+  _drawInner() {
     this.computeLayout();
     const dpr = window.devicePixelRatio || 1;
     const W = this.el.clientWidth, H = Math.max(this.el.clientHeight, this.contentH);
