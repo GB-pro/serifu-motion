@@ -17,11 +17,11 @@ await p.screenshot({ path: out + '_1.png' });
 // click the second phrase block in the acting lane and set it to "sad"
 const pos = await p.evaluate(() => { const tl = app.timeline, l = tl.layout.find(x => x.type === 'emo'), ph = l.sp.plan.phrases[1], r = tl.canvas.getBoundingClientRect(); return { x: r.left + tl.t2x((ph.t0 + ph.t1) / 2 / 30), y: r.top + l.y + 10, before: ph.emo }; });
 await p.mouse.click(pos.x, pos.y); await p.waitForTimeout(300);
-const open = await p.evaluate(() => document.getElementById('emoDlg').open);
-console.log('dialog open after click:', open, 'phrase was', pos.before);
+// a click selects the band; its feeling shows in the properties, and a number key (3 = sad) changes it
+const open = await p.evaluate(() => !document.getElementById('bandProps').hidden && !!app.timeline.sel);
+console.log('band selected after click:', open, 'phrase was', pos.before);
 if (open) {
-  await p.click('#emoChoices button[data-emo="SAD"]'); await p.screenshot({ path: out + '_2.png' });
-  await p.click('#emoDlg button[value="apply"]');
+  await p.keyboard.press('3'); await p.screenshot({ path: out + '_2.png' });
   // the page can be busy drawing for a while (software rendering): wait for the change itself, not for a fixed time
   await p.waitForFunction(() => app.project.speakers[0].plan.phrases.some((q) => q.fixed), null, { timeout: 15000 }).catch(() => console.log('OVERRIDE NOT APPLIED within 15 s'));
   console.log('after override:', JSON.stringify(await p.evaluate(() => app.project.speakers[0].plan.phrases.map(q => q.emo + (q.fixed ? '*' : '')))));

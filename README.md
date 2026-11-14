@@ -37,6 +37,7 @@
 同梱している第三者の部品:
 
 - 音声認識モデル Whisper base（OpenAI、MIT License）。[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)（Apache License 2.0）が公開している ONNX 版を `app/models/whisper/` に置いています（GitHub の1ファイル100MBの上限のため、デコーダーは2つに分割）。
+- 話者の聞き分けに使う声紋モデル CAM++（[3D-Speaker](https://github.com/modelscope/3D-Speaker)、ModelScope `iic/speech_campplus_sv_en_voxceleb_16k`、Apache License 2.0）。sherpa-onnx が公開している ONNX 版を `app/models/speaker/` に置いています。
 - [ONNX Runtime Web](https://github.com/microsoft/onnxruntime)（Microsoft、MIT License）: `app/vendor/ort/`。
 
 ## 学習データ

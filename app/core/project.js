@@ -1,5 +1,6 @@
 // Serifu Motion — project model: speakers, generated base emo, user edits, composition and export.
 // All emo tracks are in rig space (K channels of au.js): what the avatar plays is what the timeline shows and exports.
+import { vowelTrack } from './vowels.js';
 import { IDS, K, KM, IDX, EMOS, CHANNELS } from './au.js';
 import { extractRaw, speakerStats, normalize, RAW_DIM, SR, FPS } from './features.js';
 import { POSES } from './animate.js';
@@ -22,6 +23,7 @@ export function analyzeSpeaker(sp) {
   const st = speakerStats([r]);
   sp.stats = st;
   sp.features = normalize(r.raw, r.nFrames, st);
+  sp.vowels = vowelTrack(sp.audio16k, sp.T); // which vowel is sounded, frame by frame (shapes the mouth)
   sp.net = null;
   return sp;
 }
@@ -31,7 +33,7 @@ export function readSpeaker(sp, gen) { if (!sp.features || !sp.stats) analyzeSpe
 export function directSpeaker(sp, gen, acting = null) {
   if (!sp.net) readSpeaker(sp, gen);
   if (sp.face && sp.face.seen.length < sp.T) { const f = sp.face, n = f.mouth.length / f.seen.length, g = { seen: new Uint8Array(sp.T), blink: new Float32Array(sp.T), mouth: new Float32Array(sp.T * n), share: f.share }; g.seen.set(f.seen); g.blink.set(f.blink); g.mouth.set(f.mouth); sp.face = g; } // the track was made longer (silence after it)
-  const out = gen.direct(sp.net, sp.features, sp.T, { seed: sp.seed, style: sp.style, profile: acting ? acting[sp.avatar] : null, overrides: sp.emoOverrides, exaggeration: sp.expressiveness, face: sp.face || null });
+  const out = gen.direct(sp.net, sp.features, sp.T, { seed: sp.seed, style: sp.style, profile: acting ? acting[sp.avatar] : null, overrides: sp.emoOverrides, exaggeration: sp.expressiveness, face: sp.face || null, vowels: sp.vowels && sp.vowels.length === sp.T * 7 ? sp.vowels : null });
   sp.base = out.base; sp.emo = out.emo; sp.voiced = out.voiced; sp.plan = out.plan;
   return sp;
 }

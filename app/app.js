@@ -46,6 +46,7 @@ class App {
   }
   i18n() {
     document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = t(el.dataset.i18nTitle); });
     if (this.timeline) { this.renderPanel(); this.timeline.draw(); }
   }
   busy(msg) { $('#busy').hidden = !msg; $('#busyText').textContent = msg || ''; }
@@ -65,6 +66,14 @@ class App {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
       if (e.code === 'Space') { e.preventDefault(); this.togglePlay(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); }
+      if (e.ctrlKey || e.metaKey || e.altKey || $('#studio').hidden || document.querySelector('dialog[open]')) return;
+      // the acting track from the keyboard: 1-6 set the feeling of the selected band, left / right move along the bands
+      const sel = this.timeline.sel;
+      if (/^[1-6]$/.test(e.key) && sel) { e.preventDefault(); this.setBand(sel, EMOS[+e.key - 1]); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); this.timeline.step(e.key === 'ArrowRight' ? 1 : -1); }
+      else if (e.key === 'Escape') this.timeline.select(null);
+      else if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { const o = this.markAt(sel.sp, (sel.a + sel.b) / 2); if (o) { e.preventDefault(); this.pushUndo(); sel.sp.emoOverrides = sel.sp.emoOverrides.filter((q) => q !== o); this.redirect(sel.sp); this.onEdit(sel.sp); } }
+      else if (e.key === 'c' || e.key === 'C') this.setTool(this.timeline.tool === 'cut' ? 'select' : 'cut');
     });
     const stageEl = $('#stagewrap') || $('.stagewrap');
     stageEl.addEventListener('dragover', (e) => e.preventDefault());
@@ -74,6 +83,14 @@ class App {
     // emotion dialog
     const ch = $('#emoChoices');
     for (const e of EMOS) { const b = document.createElement('button'); b.type = 'button'; b.dataset.emo = e; b.style.background = EMO_COLORS[e]; b.onclick = () => { ch.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); }; ch.appendChild(b); }
+    // the properties of the selected band (non-modal; the same choices as the dialog, with their number keys)
+    const be = $('#bandEmos');
+    EMOS.forEach((e, i) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.emo = e; b.style.background = EMO_COLORS[e]; b.onclick = () => this.timeline.sel && this.setBand(this.timeline.sel, e); be.appendChild(b); });
+    $('#bandInt').oninput = () => { $('#bandIntV').textContent = Math.round($('#bandInt').value * 100) + '%'; };
+    $('#bandInt').onchange = () => { const s = this.timeline.sel; if (s) this.setBand(s, s.emo, +$('#bandInt').value); };
+    $('#bandInt').onpointerdown = () => {};
+    $('#vzin').onclick = () => this.timeline.vzoom(1.25); $('#vzout').onclick = () => this.timeline.vzoom(1 / 1.25);
+    $('#toolSel').onclick = () => this.setTool('select'); $('#toolCut').onclick = () => this.setTool('cut');
     $('#emoInt').oninput = () => { $('#emoIntV').textContent = Math.round($('#emoInt').value * 100) + '%'; };
     this.bindLive();
   }
@@ -124,7 +141,12 @@ class App {
     this.pushUndo();
     this.busy(t('analyzing')); await sleep(30);
     const x = await this.decode(file); this.setReference(file);
-    const { segments } = diarize(x, k);
+    // who speaks when: the voiceprint network in the worker; the older split by pitch and timbre if it cannot run
+    let segments;
+    try {
+      this.stt = this.stt || new SpeechToText();
+      segments = await this.stt.speakers(x, k, (m) => this.busy(m.what === 'speakers' ? `${t('spkLoading')} ${Math.round(m.loaded / 1e6)} / ${Math.round(m.total / 1e6)} MB` : `${t('spkSplitting')} ${Math.round(m.u * 100)}%`));
+    } catch (e) { console.warn('speaker split fell back:', e); segments = diarize(x, k).segments; }
     const n0 = this.project.speakers.length;
     for (let j = 0; j < k; j++) {
       const a = new Float32Array(x.length);
@@ -235,7 +257,7 @@ class App {
   afterChange() {
     if (!this.selected || !this.project.speakers.includes(this.selected)) this.selected = this.project.speakers[0] || null;
     this.stage.setCharacters(this.project.speakers.map((s) => s.avatar));
-    this.playBuf = null;
+    this.playBuf = null; if (this.timeline) this.timeline.reselect();
     this.renderPanel(); this.timeline.draw(); this.applyFrame(this.time);
   }
 
@@ -295,6 +317,35 @@ class App {
   undo() { const st = this.undoStack.pop(); if (!st) return; this.redoStack.push({ speakers: this.project.speakers.slice(), snap: this.snapshot() }); this.restore(st); }
   redo() { const st = this.redoStack.pop(); if (!st) return; this.undoStack.push({ speakers: this.project.speakers.slice(), snap: this.snapshot() }); this.restore(st); }
   onEdit(sp) { this.recompose(sp); this.timeline.draw(); this.applyFrame(this.time); }
+  setTool(tool) { this.timeline.tool = tool; $('#toolSel').classList.toggle('on', tool === 'select'); $('#toolCut').classList.toggle('on', tool === 'cut'); }
+  // the emotion mark that covers time t of a speaker, if any
+  markAt(sp, t) { return sp.emoOverrides.find((o) => t >= o.start && t <= o.end) || null; }
+  onSelectBand(sel) {
+    const box = $('#bandProps'); box.hidden = !sel; if (!sel) return;
+    $('#bandRange').textContent = `${sel.sp.name} · ${sel.a.toFixed(2)}s – ${sel.b.toFixed(2)}s`;
+    $('#bandEmos').querySelectorAll('button').forEach((x, i) => { x.innerHTML = `<span class="k">${i + 1}</span>${t(x.dataset.emo)}`; x.classList.toggle('on', x.dataset.emo === sel.emo); });
+    $('#bandInt').value = sel.inten; $('#bandInt').oninput();
+    if (this.selected !== sel.sp) { this.selected = sel.sp; }
+  }
+  // give a band a feeling (and strength): the mark covering it is changed, or a new one is laid over the band
+  setBand(sel, emo, inten = null) {
+    const sp = sel.sp, mid = (sel.a + sel.b) / 2; this.pushUndo();
+    const o = this.markAt(sp, mid), I = inten ?? (o ? o.intensity : sel.inten ?? 0.8);
+    if (o) { o.emo = emo; o.intensity = I; delete o.ai; }
+    else sp.emoOverrides.push({ start: +(sel.a - (isDirected(sp) ? 0.05 : 0)).toFixed(3), end: +(sel.b + (isDirected(sp) ? 0.05 : 0)).toFixed(3), emo, intensity: I });
+    this.redirect(sp); this.onEdit(sp); this.timeline.reselect(); this.timeline.draw();
+  }
+  // the scissors: the band under time t becomes two marks with the same feeling, cut at t
+  cutBand(sp, t) {
+    const band = this.timeline.bandAt(sp, t); if (!band || t - band.a < 0.5 || band.b - t < 0.5) return; // each half must be long enough to act
+    this.pushUndo();
+    const o = this.markAt(sp, t), pad = isDirected(sp) ? 0.05 : 0;
+    const a = o ? o.start : band.a - pad, b = o ? o.end : band.b + pad, emo = o ? o.emo : band.emo, I = o ? o.intensity : band.inten;
+    if (o) sp.emoOverrides = sp.emoOverrides.filter((q) => q !== o);
+    sp.emoOverrides.push({ start: +a.toFixed(3), end: +t.toFixed(3), emo, intensity: I, cut: true }, { start: +t.toFixed(3), end: +b.toFixed(3), emo, intensity: I, cut: true });
+    this.redirect(sp); this.onEdit(sp);
+    const left = this.timeline.bandAt(sp, t - 0.1); this.timeline.select(left ? { sp, ...left } : null);
+  }
   openEmoDialog(sp, a, b, existing, suggested = null, suggestedInt = null) {
     const dlg = $('#emoDlg');
     $('#emoRange').textContent = `${sp.name} · ${a.toFixed(2)}s – ${b.toFixed(2)}s`;

@@ -193,6 +193,8 @@ const CLS = {};
 for (const c of CHANNELS) CLS[c.id] = c.group === 'gaze' ? 'eye' : c.group;
 Object.assign(CLS, { squash: 'squash', pupil: 'pupil', eyeScale: 'eye', AU43: 'eye', AU6: 'eye' });
 const VISEME = ['AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24', 'AU28'];
+// the mouth of each vowel (index as in vowels.js: 1 a, 2 i, 3 u, 4 e, 5 o), in rig units
+const VOWEL_MOUTH = [null, { AU26: 0.68, AU16: 0.3, AU20: 0.05 }, { AU26: 0.2, AU20: 0.65, AU10: 0.18, AU16: 0.08 }, { AU26: 0.2, AU18: 0.75, AU22: 0.5 }, { AU26: 0.38, AU20: 0.42, AU16: 0.16 }, { AU26: 0.55, AU22: 0.85, AU18: 0.3 }];
 // mouth-pose channels that must give way while the mouth is busy talking
 const SPEAK_MUTE = { AU24: 1.0, AU17: 0.8, AU28: 1.0, AU15: 0.3, AU14: 0.4 };
 const BLINK = [0.55, 1.0, 1.0, 0.5, 0.18, 0.04];
@@ -211,7 +213,7 @@ export class Performer {
     this.blinkT = -1; this.blinkDur = 1; this.blinkAmt = 1;
     this.gaze = [0, 0]; this.gazeGoal = [0, 0]; this.micro = [0, 0]; this.nextMicro = 20;
     this.sp = 0;       // smoothed "is talking"
-    this.jaw = 0; this.vis = {}; for (const id of VISEME) this.vis[id] = 0;
+    this.jaw = 0; this.busy = 0; this.vis = {}; for (const id of VISEME) this.vis[id] = 0;
     this.breath = this.r() * 6.28; this.drift = new Float32Array(10); this.drift2 = new Float32Array(10);
     this.speakEmo = 'NEU'; this.inten = 0.6;
     this.t = 0;
@@ -299,11 +301,19 @@ export class Performer {
       y[IDX.AU26] += Math.min(0.95, j * jawScale);
       for (const id of VISEME) if (id !== 'AU26') y[IDX[id]] += Math.min(0.85, this.vis[id]);
       if (e === 'ANG') { y[IDX.AU10] += 0.45 * j * I; y[IDX.AU16] += 0.5 * j * I; y[IDX.AU20] += 0.25 * j * I; }
-      else if (e === 'HAP') { y[IDX.AU20] += 0.15 * j * I; y[IDX.AU12] += 0.08 * j; }
+      // (joy adds nothing to a talking mouth: a smile held through the vowels spoils their shapes; see below)
       else if (e === 'FEA') { y[IDX.AU20] += 0.3 * j * I; y[IDX.AU16] += 0.2 * j * I; }
       else if (e === 'DIS') { y[IDX.AU10] += 0.25 * j * I; }
       // a wide-open mouth stretches the face a little
       y[IDX.squash] += 0.22 * Math.max(0, j - 0.35) * P.bounce;
+      // The mouth corners of a smile give way while the mouth is shaping a vowel (open, rounded or spread) and come
+      // back whenever it closes: at m, b, p, between words and in pauses. People show joy that way, in flashes at the
+      // closures, and the vowels keep their shapes. (A smile held through the vowels made every vowel look the same.)
+      const busy = clamp(this.jaw * 2.2 + (this.vis.AU18 + this.vis.AU22) * 1.4 + this.vis.AU20 * 0.8, 0, 1);
+      this.busy += (busy - this.busy) * (busy > this.busy ? 0.6 : 0.3);
+      const give = 0.8 * this.busy * live;
+      y[IDX.AU12] *= 1 - give; y[IDX.AU14] *= 1 - give; y[IDX.mouthAsym] *= 1 - 0.6 * give;
+      if (e === 'HAP' && this.busy < 0.25) y[IDX.AU12] += 0.12 * I * (1 - this.busy / 0.25) * live; // the corners lift a little more at each closure
     }
     // ---- eyes: saccadic gaze with tiny darts, blink as an event ----
     if (--this.nextMicro <= 0) { const a = act.look === 'dart' ? 0.12 : 0.035; this.micro = [gauss(r) * a, gauss(r) * a * 0.6]; this.nextMicro = act.look === 'dart' ? 6 + Math.floor(r() * 14) : 16 + Math.floor(r() * 40); }
@@ -471,10 +481,10 @@ export function visemesFromCamera(au, meta, out = {}) {
   return out;
 }
 
-export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile = null, overrides = [], exaggeration = 1, face = null }) {
+export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile = null, overrides = [], exaggeration = 1, face = null, vowels = null }) {
   const KMn = meta.names.length, NE = EMOS.length, prof = { ...DEFAULT_PROFILE, ...(profile || {}) };
   const r = rng(seed);
-  const cuts = []; for (const ov of overrides) for (const x of [ov.start, ov.end]) { const c = Math.round(x * FPS); if (overrides.some((o) => o !== ov && (Math.abs(o.start - x) < 0.02 || Math.abs(o.end - x) < 0.02) && o.emo !== ov.emo) && !cuts.includes(c)) cuts.push(c); } // only where one mark hands over to another with a different feeling
+  const cuts = []; for (const ov of overrides) for (const x of [ov.start, ov.end]) { const c = Math.round(x * FPS); if (overrides.some((o) => o !== ov && (Math.abs(o.start - x) < 0.02 || Math.abs(o.end - x) < 0.02) && (o.emo !== ov.emo || o.cut || ov.cut)) && !cuts.includes(c)) cuts.push(c); } // where one mark hands over to another with a different feeling, or where the user cut a band with the scissors
   const an = analyzeSpeech(F, T, aux, 3, cuts.sort((a, b) => a - b));
   const phrases = an.phrases;
   // ---- what: emotion + intensity per phrase (posterior averaged over the phrase, shared a little with its neighbours) ----
@@ -614,6 +624,11 @@ export function directOffline({ F, T, reg, logits, aux, meta, seed = 7, profile 
   const gate0 = new Float32Array(T), gate = new Float32Array(T);
   for (let t = 0; t < T; t++) if (an.speech[t]) gate0.fill(1, Math.max(0, t - 4), Math.min(T, t + 4));
   for (let t = 0; t < T; t++) gate[t] = 0.25 * gate0[Math.max(0, t - 1)] + 0.5 * gate0[t] + 0.25 * gate0[Math.min(T - 1, t + 1)];
+  // the vowel heard in the voice (vowels.js) sets the mouth's shape: open for a, spread for i and e, rounded for o and
+  // u, closed between syllables. The network's own guess of the mouth keeps a small say (it hears consonants too).
+  if (vowels) { const D = 7; for (let t = 0; t < T; t++) { const o = t * D, loud = vowels[o + 6], m = {}; for (const id of VISEME) m[id] = 0;
+      for (let i = 1; i < 6; i++) { const w = vowels[o + i]; if (w > 0.01) { const tg = VOWEL_MOUTH[i]; for (const id in tg) m[id] += w * tg[id]; } }
+      const g = 0.75 + 0.45 * loud; for (const id of VISEME) vis[t][id] = 0.75 * m[id] * (id === 'AU26' ? g : 1) + 0.25 * vis[t][id]; } }
   // a face that was filmed with the speech (imported video): while it is in the picture, its mouth shapes go into the
   // performer in place of the ones guessed from the sound, and its blinks replace the ones the director placed
   const NV = VISEME.length, seen = (t) => !!(face && face.seen[t]);

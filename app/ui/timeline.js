@@ -13,7 +13,8 @@ export class Timeline {
     this.el = el; this.app = app;
     this.canvas = document.createElement('canvas'); el.appendChild(this.canvas);
     this.ctx = this.canvas.getContext('2d');
-    this.pxPerSec = 120; this.scrollX = 0; this.time = 0;
+    this.pxPerSec = 120; this.scrollX = 0; this.time = 0; this.vz = 1; // vz: height of the lanes (vertical zoom)
+    this.sel = null; this.tool = 'select'; // sel: { sp, a, b } the selected band of an acting track; tool: 'select' | 'cut'
     this.drag = null; this.layout = [];
     this._bind();
     new ResizeObserver(() => this.draw()).observe(el);
@@ -27,9 +28,10 @@ export class Timeline {
     const L = []; let y = RULER;
     for (const sp of this.project.speakers) {
       L.push({ type: 'speaker', sp, y, h: SP_H }); y += SP_H;
-      L.push({ type: 'wave', sp, y, h: WAVE_H }); y += WAVE_H;
-      L.push({ type: 'emo', sp, y, h: EMO_H }); y += EMO_H;
-      for (const id of sp.visible) { L.push({ type: 'ch', sp, id, k: IDX[id], y, h: CH_H }); y += CH_H; }
+      const wh = Math.round(WAVE_H * this.vz), eh = Math.round(EMO_H * Math.sqrt(this.vz)), ch = Math.round(CH_H * this.vz);
+      L.push({ type: 'wave', sp, y, h: wh }); y += wh;
+      L.push({ type: 'emo', sp, y, h: eh }); y += eh;
+      for (const id of sp.visible) { L.push({ type: 'ch', sp, id, k: IDX[id], y, h: ch }); y += ch; }
     }
     this.layout = L; this.contentH = y + 8;
   }
@@ -46,6 +48,7 @@ export class Timeline {
     c.addEventListener('pointercancel', () => { this.drag = null; });
     c.addEventListener('dblclick', (e) => this._dbl(e));
     c.addEventListener('wheel', (e) => {
+      if (e.altKey) { e.preventDefault(); this.vzoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); return; } // Alt + wheel: lane height
       if (e.ctrlKey || e.metaKey) { e.preventDefault(); const t0 = this.x2t(e.offsetX); this.pxPerSec = Math.max(20, Math.min(800, this.pxPerSec * (e.deltaY < 0 ? 1.15 : 1 / 1.15))); this.scrollX = Math.max(0, t0 - (e.offsetX - HEAD_W) / this.pxPerSec); this.draw(); }
       else if (e.shiftKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) { e.preventDefault(); this.scrollX = Math.max(0, this.scrollX + (e.deltaX || e.deltaY) / this.pxPerSec); this.draw(); }
     }, { passive: false });
@@ -61,7 +64,7 @@ export class Timeline {
       if (l.type === 'ch') this.app.selectSpeaker(l.sp);
       return;
     }
-    if (l.type === 'emo') { const t0 = this.x2t(x); this.drag = { type: 'range', l, t0, t1: t0 }; return; }
+    if (l.type === 'emo') { const t0 = this.x2t(x); if (this.tool === 'cut') { this.app.cutBand(l.sp, t0); return; } this.drag = { type: 'range', l, t0, t1: t0 }; return; }
     if (l.type === 'ch') {
       const sp = l.sp, t = this.x2t(x);
       const keys = sp.edits[l.id] || (sp.edits[l.id] = []);
@@ -91,7 +94,7 @@ export class Timeline {
   finalAt(sp, k, t) { const f = sp.final; if (!f) return 0; const i = Math.max(0, Math.min(sp.T - 1, Math.round(t * FPS))); return f[i * K + k]; }
   _move(e) {
     const [x, y] = this._pos(e);
-    if (!this.drag) { const l = this.laneAt(y); this.canvas.style.cursor = y < RULER ? 'col-resize' : l?.type === 'ch' && x > HEAD_W ? 'crosshair' : l?.type === 'emo' ? 'text' : 'default'; return; }
+    if (!this.drag) { const l = this.laneAt(y); this.canvas.style.cursor = y < RULER ? 'col-resize' : l?.type === 'ch' && x > HEAD_W ? 'crosshair' : l?.type === 'emo' && x > HEAD_W ? (this.tool === 'cut' ? 'cell' : 'pointer') : 'default'; return; }
     const d = this.drag;
     if (d.type === 'seek') this.app.seek(Math.max(0, this.x2t(x)));
     else if (d.type === 'range') { d.t1 = this.x2t(x); this.draw(); }
@@ -108,12 +111,7 @@ export class Timeline {
     if (d?.type === 'range') {
       const a = Math.min(d.t0, d.t1), b = Math.max(d.t0, d.t1), sp = d.l.sp;
       if (b - a > 0.1) this.app.openEmoDialog(sp, a, b, null); // dragged: a new emotion for that stretch
-      else { // clicked: change the emotion of the phrase (or the range) under the pointer
-        const hit = sp.emoOverrides.find((o) => a >= o.start && a <= o.end);
-        const ph = isDirected(sp) ? sp.plan.phrases.find((q) => a >= q.tp / FPS && a <= q.t1 / FPS) : null;
-        if (hit) this.app.openEmoDialog(sp, hit.start, hit.end, hit);
-        else if (ph) this.app.openEmoDialog(sp, +(ph.t0 / FPS - 0.05).toFixed(2), +(ph.t1 / FPS + 0.05).toFixed(2), null, ph.emo, ph.inten);
-      }
+      else { const band = this.bandAt(sp, a); this.select(band ? { sp, ...band } : null); } // clicked: select the band under the pointer
       this.draw();
     }
   }
@@ -133,6 +131,25 @@ export class Timeline {
     this.draw();
   }
   zoom(f) { this.pxPerSec = Math.max(20, Math.min(800, this.pxPerSec * f)); this.draw(); }
+  vzoom(f) { this.vz = Math.max(0.5, Math.min(4, this.vz * f)); this.draw(); }
+  // The bands of a speaker's acting track, in time order: the phrases of the acting plan, or the emotion marks of a
+  // take the director cannot re-plan. a, b: seconds; emo, inten: what is played there.
+  bands(sp) {
+    if (isDirected(sp)) return sp.plan.phrases.map((q) => ({ a: Math.max(0, q.tp / FPS), b: q.t1 / FPS, emo: q.emo, inten: q.inten }));
+    return sp.emoOverrides.slice().sort((p, q) => p.start - q.start).map((o) => ({ a: o.start, b: o.end, emo: o.emo, inten: o.intensity ?? 0.8 }));
+  }
+  bandAt(sp, t) { const B = this.bands(sp); return B.find((x) => t >= x.a && t <= x.b) || null; }
+  select(sel) {
+    this.sel = sel; this.app.onSelectBand(sel); this.draw();
+    if (sel) { const w = this.el.clientWidth; if (this.t2x(sel.a) < HEAD_W || this.t2x(sel.b) > w) { this.scrollX = Math.max(0, sel.a - 0.5); } }
+  }
+  // after a change the bands are rebuilt: keep the selection on the band at the same place
+  reselect() { if (!this.sel) return; const sp = this.sel.sp; if (!this.project.speakers.includes(sp)) { this.select(null); return; } const band = this.bandAt(sp, (this.sel.a + this.sel.b) / 2) || this.bandAt(sp, this.sel.a + 0.05); this.sel = band ? { sp, ...band } : null; this.app.onSelectBand(this.sel); }
+  step(dir) { // the next (1) or previous (-1) band of the same speaker
+    if (!this.sel) { const sp = this.app.selected || this.project.speakers[0]; if (!sp) return; const B = this.bands(sp); const b = B.find((x) => x.b >= this.time) || B[B.length - 1]; if (b) this.select({ sp, ...b }); return; }
+    const B = this.bands(this.sel.sp), mid = (this.sel.a + this.sel.b) / 2; let i = B.findIndex((x) => mid >= x.a && mid <= x.b); if (i < 0) i = B.findIndex((x) => x.a > mid) - (dir > 0 ? 1 : 0);
+    const j = Math.max(0, Math.min(B.length - 1, i + dir)); if (B[j]) { this.select({ sp: this.sel.sp, ...B[j] }); this.app.seek(B[j].a); }
+  }
 
   draw() {
     this.computeLayout();
@@ -155,6 +172,8 @@ export class Timeline {
       if (major) { g.fillStyle = C('--tl-text-dim'); g.fillText(fmt(t), x + 3, 9); }
     }
     for (const l of this.layout) this._lane(g, l, W, C);
+    // the selected band
+    if (this.sel) { const l = this.layout.find((q) => q.type === 'emo' && q.sp === this.sel.sp); if (l) { const a = Math.max(HEAD_W, this.t2x(this.sel.a)), b = this.t2x(this.sel.b); if (b > HEAD_W) { g.strokeStyle = C('--accent'); g.lineWidth = 3; g.strokeRect(a + 1.5, l.y + 1.5, b - a - 3, l.h - 4); g.lineWidth = 1; } } }
     // range selection
     if (this.drag?.type === 'range') { const l = this.drag.l, a = this.t2x(Math.min(this.drag.t0, this.drag.t1)), b = this.t2x(Math.max(this.drag.t0, this.drag.t1)); g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(a, l.y + 2, b - a, l.h - 4); }
     // playhead

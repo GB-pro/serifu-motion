@@ -4,10 +4,20 @@
 //               { type: 'line', id, text, lang, conf }, { type: 'error', id, message }
 import * as ort from '../vendor/ort/ort.wasm.min.mjs';
 import { Transcriber, parseTokens } from './asr.js';
+import { SpeakerSplitter } from './speakers.js';
 
 const FILES = [['base-encoder.int8.onnx', 29120534], ['base-decoder.int8.onnx.part0', 66000000], ['base-decoder.int8.onnx.part1', 64672026], ['base-tokens.txt', 816730]];
 const TOTAL = FILES.reduce((s, f) => s + f[1], 0);
-let tr = null, loading = null;
+let tr = null, loading = null, splitter = null;
+// the voiceprint network for telling speakers apart (3D-Speaker CAM++, 29.6 MB), loaded the first time it is needed
+async function getSplitter(base) {
+  if (splitter) return splitter;
+  ort.env.wasm.wasmPaths = new URL('../vendor/ort/', import.meta.url).href;
+  ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
+  let n = 0; const b = await get(base, 'campplus_en_voxceleb.onnx', (k) => { n += k; postMessage({ type: 'progress', what: 'speakers', loaded: n, total: 29596978 }); });
+  splitter = new SpeakerSplitter(ort, await ort.InferenceSession.create(b, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' }));
+  return splitter;
+}
 
 // One model file: from the browser's cache when it is there, otherwise from the site (and then kept for next time).
 async function get(base, name, done) {
@@ -38,6 +48,7 @@ onmessage = (e) => {
       if (m.type === 'load') { loading = loading || load(m.base); await loading; postMessage({ type: 'ready' }); }
       else if (m.type === 'line') { await loading; const r = await tr.line(m.samples, { lang: m.lang || undefined }); postMessage({ type: 'line', id: m.id, ...r }); }
       else if (m.type === 'forget') { if (tr) tr.lang = null; }
+      else if (m.type === 'speakers') { const s = await getSplitter(m.base); const r = await s.run(m.samples, m.k, (u) => postMessage({ type: 'progress', what: 'splitting', id: m.id, u })); postMessage({ type: 'speakers', id: m.id, segments: r.segments }); }
     } catch (err) { if (m.type === 'load') loading = null; postMessage({ type: 'error', id: m.id, message: String(err && err.message || err) }); }
   });
 };

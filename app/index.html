@@ -58,6 +58,13 @@
       <p class="ainote" id="aiInfo" hidden></p>
       <h3 data-i18n="speakers"></h3>
       <div id="spList"></div>
+      <div id="bandProps" class="bandprops" hidden>
+        <h3 data-i18n="setEmotion"></h3>
+        <p id="bandRange" class="dim"></p>
+        <div id="bandEmos" class="emochoices"></div>
+        <label class="mini"><span data-i18n="intensity"></span> <input type="range" id="bandInt" min="0.1" max="1.5" step="0.05" value="0.8"> <output id="bandIntV"></output></label>
+        <p class="dim" data-i18n="bandKeys"></p>
+      </div>
       <div id="spDetail"></div>
       <p class="model" id="modelInfo"></p>
     </aside>
@@ -66,7 +73,10 @@
     <button class="ghost" id="undo" data-i18n="undo"></button>
     <button class="ghost" id="redo" data-i18n="redo"></button>
     <span class="sep"></span>
-    <button class="ghost" id="zout" aria-label="zoom out">−</button><button class="ghost" id="zin" aria-label="zoom in">＋</button>
+    <button class="ghost" id="zout" aria-label="zoom out" data-i18n-title="zoomH">−</button><button class="ghost" id="zin" aria-label="zoom in" data-i18n-title="zoomH">＋</button>
+    <button class="ghost" id="vzout" aria-label="lanes lower" data-i18n-title="zoomV">↕−</button><button class="ghost" id="vzin" aria-label="lanes taller" data-i18n-title="zoomV">↕＋</button>
+    <span class="sep"></span>
+    <button class="ghost tool on" id="toolSel" data-i18n-title="toolSelect" aria-label="select">➤</button><button class="ghost tool" id="toolCut" data-i18n-title="toolCut" aria-label="cut">✂</button>
     <span class="hint" data-i18n="editHint"></span>
   </div>
   <div id="timeline" class="timeline"></div>

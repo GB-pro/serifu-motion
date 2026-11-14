@@ -162,7 +162,7 @@ export class EmoGenerator {
     const meta = this.meta, NE = EMOS.length;
     const { reg, logits, aux } = net;
     if ((opts.style || 'anime') !== 'natural') {
-      const out = directOffline({ F, T, reg, logits, aux, meta, seed: opts.seed ?? 7, profile: opts.profile, overrides: opts.overrides || [], exaggeration: opts.exaggeration ?? 1, face: opts.face || null });
+      const out = directOffline({ F, T, reg, logits, aux, meta, seed: opts.seed ?? 7, profile: opts.profile, overrides: opts.overrides || [], exaggeration: opts.exaggeration ?? 1, face: opts.face || null, vowels: opts.vowels || null });
       return { T, base: out.track, emo: out.emo, voiced: out.speech, plan: out.plan };
     }
     const base = new Float32Array(T * K), emo = new Float32Array(T * NE), voiced = new Uint8Array(T);
