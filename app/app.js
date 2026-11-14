@@ -55,8 +55,11 @@ class App {
   bindUI() {
     document.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => this.tab(b.dataset.tab));
     $('#play').onclick = () => this.togglePlay();
-    $('#fileSep').onchange = (e) => this.addSeparate([...e.target.files]).finally(() => (e.target.value = ''));
-    $('#fileMix').onchange = (e) => this.addMixed(e.target.files[0], +$('#nSpk').value).finally(() => (e.target.value = ''));
+    // files wait in a list until the reading is set up and started with the button
+    $('#fileSep').onchange = (e) => { this.addPending([...e.target.files]); e.target.value = ''; };
+    document.querySelectorAll('input[name=loadMode]').forEach((r) => (r.onchange = () => this.renderPending()));
+    $('#startBtn').onclick = () => this.startAnalysis();
+    this.pending = []; this.renderPending();
     $('#fileProj').onchange = async (e) => { const f = e.target.files[0]; if (f) await this.loadProject(JSON.parse(await f.text())); e.target.value = ''; };
     $('#demoBtn').onclick = () => this.loadDemo();
     $('#undo').onclick = () => this.undo(); $('#redo').onclick = () => this.redo();
@@ -78,9 +81,9 @@ class App {
     });
     const stageEl = $('#stagewrap') || $('.stagewrap');
     stageEl.addEventListener('dragover', (e) => e.preventDefault());
-    stageEl.addEventListener('drop', (e) => { e.preventDefault(); this.addDropped([...e.dataTransfer.files]); });
+    stageEl.addEventListener('drop', (e) => { e.preventDefault(); this.addPending([...e.dataTransfer.files]); });
     $('#timeline').addEventListener('dragover', (e) => e.preventDefault());
-    $('#timeline').addEventListener('drop', (e) => { e.preventDefault(); this.addDropped([...e.dataTransfer.files]); });
+    $('#timeline').addEventListener('drop', (e) => { e.preventDefault(); this.addPending([...e.dataTransfer.files]); });
     // emotion dialog
     const ch = $('#emoChoices');
     for (const e of EMOS) { const b = document.createElement('button'); b.type = 'button'; b.dataset.emo = e; b.style.background = EMO_COLORS[e]; b.onclick = () => { ch.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); }; ch.appendChild(b); }
@@ -112,12 +115,31 @@ class App {
     const r = await oc.startRendering();
     return r.getChannelData(0).slice(0);
   }
-  // dropped files: one file is taken as a conversation (split into speakers; if only one voice is found it stays one
-  // speaker), several files as one speaker each
-  addDropped(files) {
-    files = files.filter((f) => /audio|video/.test(f.type) || /\.(wav|mp3|m4a|aac|ogg|flac|mp4|mov|webm)$/i.test(f.name));
-    if (files.length === 1) return this.addMixed(files[0], Math.max(2, +$('#nSpk').value || 2));
-    return this.addSeparate(files);
+  // ---------- files waiting to be read ----------
+  addPending(files) {
+    files = files.filter((f) => /audio|video/.test(f.type) || /\.(wav|mp3|m4a|aac|ogg|flac|mp4|mov|webm|m4v)$/i.test(f.name));
+    if (!files.length) return;
+    this.pending.push(...files); this.renderPending();
+  }
+  renderPending() {
+    const ul = $('#pendList'); ul.innerHTML = '';
+    if (!this.pending.length) { const li = document.createElement('li'); li.className = 'none'; li.textContent = t('pendNone'); ul.appendChild(li); }
+    this.pending.forEach((f, i) => { const li = document.createElement('li'), n = document.createElement('span'), x = document.createElement('button');
+      n.textContent = (isVideo(f) ? '🎬 ' : '🎵 ') + f.name; n.title = f.name; x.textContent = '✕'; x.title = 'remove';
+      x.onclick = () => { this.pending.splice(i, 1); this.renderPending(); }; li.append(n, x); ul.appendChild(li); });
+    const mode = (document.querySelector('input[name=loadMode]:checked') || {}).value;
+    $('#nSpkBox').hidden = mode !== 'mix';
+    $('#startBtn').disabled = !this.pending.length || !mode || this.analyzing;
+    $('#startBtn').title = mode ? '' : t('chooseMode');
+  }
+  async startAnalysis() {
+    const mode = (document.querySelector('input[name=loadMode]:checked') || {}).value;
+    if (!this.pending.length || !mode || this.analyzing) return;
+    const files = this.pending.splice(0); this.analyzing = true; this.renderPending();
+    try {
+      if (mode === 'sep') await this.addSeparate(files);
+      else for (const f of files) await this.addMixed(f, +$('#nSpk').value || 2);
+    } finally { this.analyzing = false; this.renderPending(); }
   }
   // how long the import took, kept on screen until the next one
   loadInfo(stage, extra = '') {
@@ -164,10 +186,6 @@ class App {
       this.stt = this.stt || new SpeechToText();
       segments = await this.stt.speakers(x, k, (m) => this.busy(m.what === 'speakers' ? `${t('spkLoading')} ${Math.round(m.loaded / 1e6)} / ${Math.round(m.total / 1e6)} MB` : `${t('spkSplitting')} ${Math.round(m.u * 100)}%`));
     } catch (e) { console.warn('speaker split fell back:', e); segments = diarize(x, k).segments; }
-    // a voice that has almost nothing to say is not a speaker of its own (a monologue split in two): it joins the others
-    { const dur = new Array(k).fill(0); for (const sg of segments) if (sg.speaker >= 0 && sg.speaker < k) dur[sg.speaker] += sg.end - sg.start;
-      const tot = dur.reduce((a, b) => a + b, 0) || 1, keep = dur.map((d) => d / tot >= 0.07), map = []; let n = 0; for (let j = 0; j < k; j++) map[j] = keep[j] ? n++ : -1;
-      if (n >= 1 && n < k) { const big = dur.indexOf(Math.max(...dur)); segments = segments.map((sg) => ({ ...sg, speaker: map[sg.speaker] >= 0 ? map[sg.speaker] : map[big] })); k = n; } }
     const n0 = this.project.speakers.length;
     for (let j = 0; j < k; j++) {
       const a = k === 1 ? x.slice() : new Float32Array(x.length);

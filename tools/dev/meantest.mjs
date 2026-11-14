@@ -15,7 +15,7 @@ await p.route('https://api.anthropic.com/**', async (route) => {
 if (mode !== 'nokey') await p.addInitScript(() => localStorage.setItem('sm.ai.key', 'test-key-not-real'));
 await p.goto(process.env.SITE || 'http://127.0.0.1:8765/index.html'); await p.waitForSelector('#fileSep', { state: 'attached', timeout: 60000 });
 const t0 = Date.now();
-await p.setInputFiles('#fileSep', file);
+await p.setInputFiles('#fileSep', file); await p.check('input[name=loadMode][value=sep]'); await p.click('#startBtn');
 await p.waitForFunction(() => !document.querySelector('#aiInfo').hidden && document.querySelector('#busy').hidden, null, { timeout: 600000 });
 console.log('seconds', ((Date.now() - t0) / 1000).toFixed(1));
 console.log('note', await p.textContent('#aiInfo'));

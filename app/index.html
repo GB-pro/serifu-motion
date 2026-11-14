@@ -41,12 +41,18 @@
       </div>
     </div>
     <aside class="panel" id="panel">
-      <div class="row wrap">
-        <label class="btn primary"><input type="file" id="fileSep" accept="audio/*,video/*" multiple hidden><span data-i18n="addAudio"></span></label>
-      </div>
-      <div class="row wrap">
-        <label class="btn"><input type="file" id="fileMix" accept="audio/*,video/*" hidden><span data-i18n="addMixed"></span></label>
-        <label class="mini"><span data-i18n="numSpeakers"></span> <select id="nSpk"><option>2</option><option>3</option><option>4</option></select></label>
+      <div class="loadbox">
+        <div class="row wrap">
+          <label class="btn"><input type="file" id="fileSep" accept="audio/*,video/*" multiple hidden><span data-i18n="addFiles"></span></label>
+          <span class="dim small" data-i18n="dropHint"></span>
+        </div>
+        <ul id="pendList" class="pendlist"></ul>
+        <div class="modes">
+          <label><input type="radio" name="loadMode" value="sep"> <span data-i18n="modeSep"></span></label>
+          <label><input type="radio" name="loadMode" value="mix"> <span data-i18n="modeMix"></span></label>
+          <label class="mini" id="nSpkBox"><span data-i18n="numSpeakers"></span> <select id="nSpk"><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select></label>
+        </div>
+        <button class="btn primary" id="startBtn" data-i18n="startAnalysis" disabled></button>
       </div>
       <div class="row wrap">
         <button class="btn" id="demoBtn" data-i18n="demo" hidden></button><!-- shown again once a demo project (demo/demo.json) is published -->

@@ -8,7 +8,7 @@ p.on('console', m => { if (m.type() === 'error' || m.type() === 'warning') conso
 await p.goto('http://localhost:8123/index.html');
 await p.waitForFunction('window.app && window.app.timeline', null, { timeout: 60000 });
 const t0 = Date.now();
-if (files.length) { await p.setInputFiles('#fileSep', files); await p.waitForFunction(`app.project.speakers.length >= ${files.length} && document.getElementById('busy').hidden`, null, { timeout: 240000 }); }
+if (files.length) { await p.setInputFiles('#fileSep', files); await p.check('input[name=loadMode][value=sep]'); await p.click('#startBtn'); await p.waitForFunction(`app.project.speakers.length >= ${files.length} && document.getElementById('busy').hidden`, null, { timeout: 240000 }); }
 console.log('import+generate', ((Date.now() - t0) / 1000).toFixed(1), 's');
 const info = await p.evaluate(() => app.project.speakers.map(s => ({ name: s.name, T: s.T, K: s.base.length / s.T, style: s.style, phrases: s.plan && s.plan.phrases.map(q => q.emo + (q.emo2 ? '+' + q.emo2 : '') + ':' + q.inten) })));
 console.log(JSON.stringify(info));

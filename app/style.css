@@ -145,3 +145,14 @@ dialog h3 { margin: 0 0 4px; }
 .field input, .field select { background: var(--surface2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--text); font-size: 14px; min-width: 0; }
 .check { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 14px; }
 #faceInfo { color: var(--text); background: rgba(80,150,230,0.10); padding: 6px 8px; border-radius: 6px; }
+
+.loadbox { border: 1px solid var(--line); border-radius: 10px; padding: 10px; margin-bottom: 10px; }
+.pendlist { list-style: none; margin: 6px 0; padding: 0; font-size: 13px; }
+.pendlist li { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+.pendlist li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pendlist li button { border: 0; background: none; cursor: pointer; color: var(--dim); font-size: 14px; }
+.pendlist li.none { color: var(--dim); }
+.loadbox .modes { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 8px; font-size: 13px; }
+.loadbox #startBtn { width: 100%; }
+.loadbox #startBtn:disabled { opacity: 0.45; cursor: default; }
+.small { font-size: 12px; }
