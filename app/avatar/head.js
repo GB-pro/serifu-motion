@@ -756,14 +756,60 @@ export class Head {
   }
   _jawMoves() { const j = this.jaw; this._frame(this.cur, j.now); this.teethLower.matrix.multiplyMatrices(j.now, j.rest); this.teethLower.matrixWorldNeedsUpdate = true; this.tongue.matrix.copy(this.teethLower.matrix); this.tongue.matrixWorldNeedsUpdate = true; }
   // A sculpted shape (hair, a hat) described on the published head: it is made into a mesh there and taken through the
-  // character's proportions like everything else, so it fits whatever head the character has.
-  addSculpt(field, material, cell = 0.4) {
-    const t0 = performance.now(), m = polygonise(field, cell), o = [0, 0, 0], P = m.pos;
-    for (let i = 0; i < P.length; i += 3) { this.warp(P[i], P[i + 1], P[i + 2], o); P[i] = o[0]; P[i + 1] = o[1]; P[i + 2] = o[2]; }
+  // character's proportions like everything else, so it fits whatever head the character has. With `own` the shape is
+  // described on the character's own head instead (centimetres, the middle of the head at 0, 2.5, 1.5) and stays as it is.
+  addSculpt(field, material, cell = 0.4, own = false, box) {
+    const t0 = performance.now(), m = polygonise(field, cell, box), o = [0, 0, 0], P = m.pos;
+    if (!own) for (let i = 0; i < P.length; i += 3) { this.warp(P[i], P[i + 1], P[i + 2], o); P[i] = o[0]; P[i + 1] = o[1]; P[i + 2] = o[2]; }
     if (field.after) field.after(P); // changes made on the character itself, after the proportions
-    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setIndex(new THREE.BufferAttribute(m.idx, 1)); g.computeVertexNormals(); g.setAttribute('ao', new THREE.BufferAttribute(new Float32Array(P.length / 3).fill(1), 1));
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setIndex(new THREE.BufferAttribute(m.idx, 1)); if (own && !field.after) g.setAttribute('normal', new THREE.BufferAttribute(m.nrm, 3)); else g.computeVertexNormals(); g.setAttribute('ao', new THREE.BufferAttribute(new Float32Array(P.length / 3).fill(1), 1));
     const mesh = new THREE.Mesh(g, material); mesh.castShadow = true; mesh.receiveShadow = true; this.root.add(mesh); this.sculpts.push(mesh);
     mesh.userData.buildMs = performance.now() - t0; return mesh;
+  }
+  // a point on the character's own head: `yaw` (towards the character's left) and `pitch` in degrees as seen from the middle of the head, `off` cm above the smooth form
+  on(yaw, pitch, off = 0) { const a = (yaw * Math.PI) / 180, b = (pitch * Math.PI) / 180, x = Math.sin(a) * Math.cos(b), y = Math.sin(b), z = Math.cos(a) * Math.cos(b), r = this.warp.ball.R1.at(x, y, z) + off; return [BALL_C[0] + x * r, BALL_C[1] + y * r, BALL_C[2] + z * r]; }
+  // Locks of hair: each is a smooth tube that runs over the head from a root to a pointed tip, made directly as a mesh (a
+  // lock put through the grid of a Field comes out with steps along its thin edge). A lock is { path: 2 to 4 points
+  // [yaw, pitch] as in on(), the lock bends towards the inner ones; wide: half its width in cm; high: half its thickness,
+  // [along its length, at the tip]; lift: how far its middle line is above the head, [at the root, along its length, at the tip];
+  // hold: [where along it (0..1) the length begins, where it ends]; taper: the larger, the later it narrows; root: its width at the root (0..1) }
+  // o.over: a Field (the mass of the hair) the locks lie on: the lift is then counted from its surface wherever it is above
+  // the head, and a lock that runs over its edge comes down to the head gently (o.fall: over how many rings).
+  addLocks(locks, material, o = {}) {
+    const N = o.rings ?? 20, M = o.sides ?? 12, pos = [], idx = [], C = BALL_C;
+    for (const L of locks) {
+      const base = pos.length / 3, P = L.path, n = P.length - 1, wide = L.wide ?? 1.5, high = L.high ?? [0.7, 0.3], lift = L.lift ?? [0.2, 0.7, 0.25], hold = L.hold ?? [0.3, 0.7], taper = L.taper ?? 3.5, root = L.root ?? 0.55, c = [];
+      for (let i = 0; i <= N; i++) { // the middle line: a Bezier curve in the angles
+        const t = i / N, q = P.map((v) => [v[0], v[1]]);
+        for (let k = n; k > 0; k--) for (let a = 0; a < k; a++) for (let j = 0; j < 2; j++) q[a][j] += (q[a + 1][j] - q[a][j]) * t;
+        c.push(q[0]);
+      }
+      let under = new Float32Array(N + 1); // how far the surface the lock lies on is above the head
+      if (o.over) {
+        for (let i = 0; i <= N; i++) {
+          const p0 = this.on(c[i][0], c[i][1], 0), p1 = this.on(c[i][0], c[i][1], 1), inside = (r) => o.over.value(p0[0] + (p1[0] - p0[0]) * r, p0[1] + (p1[1] - p0[1]) * r, p0[2] + (p1[2] - p0[2]) * r) < 0;
+          let r = 8; while (r > 0 && !inside(r)) r -= 0.25;
+          if (r > 0) { let lo = r, hi = r + 0.25; for (let k = 0; k < 8; k++) { const m = (lo + hi) / 2; if (inside(m)) lo = m; else hi = m; } under[i] = lo; }
+        }
+        const fall = o.fall ?? 3, wide2 = Float32Array.from(under); for (let i = 0; i <= N; i++) for (let k = 1; k <= fall && i - k >= 0; k++) wide2[i] = Math.max(wide2[i], under[i - k]);
+        under = wide2; for (let pass = 0; pass < fall * 2; pass++) { const u = Float32Array.from(under); for (let i = 1; i < N; i++) under[i] = (u[i - 1] + 2 * u[i] + u[i + 1]) / 4; }
+      }
+      for (let i = 0; i <= N; i++) { const t = i / N; c[i] = this.on(c[i][0], c[i][1], under[i] + (t < hold[0] ? lift[0] + (lift[1] - lift[0]) * smooth(0, hold[0], t) : lift[1] + (lift[2] - lift[1]) * smooth(hold[1], 1, t))); }
+      let S = null;
+      for (let i = 0; i <= N; i++) {
+        const t = i / N, a = c[Math.max(0, i - 1)], b = c[Math.min(N, i + 1)], m = c[i];
+        let tx = b[0] - a[0], ty = b[1] - a[1], tz = b[2] - a[2]; const tl = Math.hypot(tx, ty, tz) || 1; tx /= tl; ty /= tl; tz /= tl;
+        const ux = m[0] - C[0], uy = m[1] - C[1], uz = m[2] - C[2];
+        let sx, sy, sz; if (S) [sx, sy, sz] = S; else { sx = uy * tz - uz * ty; sy = uz * tx - ux * tz; sz = ux * ty - uy * tx; } // sideways: at right angles to the lock, carried along it
+        const d = sx * tx + sy * ty + sz * tz; sx -= d * tx; sy -= d * ty; sz -= d * tz; const sl = Math.hypot(sx, sy, sz) || 1; sx /= sl; sy /= sl; sz /= sl; S = [sx, sy, sz];
+        const ox = ty * sz - tz * sy, oy = tz * sx - tx * sz, oz = tx * sy - ty * sx; // outwards
+        const close = Math.pow(Math.max(0, 1 - Math.pow(t, taper)), L.point ?? 1), w = wide * (root + (1 - root) * smooth(0, 0.3, t)) * close, h = (high[0] + (high[1] - high[0]) * smooth(hold[1], 1, t)) * Math.min(1, close * 3);
+        for (let j = 0; j < M; j++) { const f = (j / M) * 2 * Math.PI, cx = Math.cos(f) * w, cy = Math.sin(f) * h; pos.push(m[0] + sx * cx + ox * cy, m[1] + sy * cx + oy * cy, m[2] + sz * cx + oz * cy); }
+      }
+      for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) { const a = base + i * M + j, b = base + i * M + ((j + 1) % M), e = a + M, f = b + M; idx.push(a, b, e, b, f, e); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(pos), 3)); g.setIndex(idx); g.computeVertexNormals(); g.setAttribute('ao', new THREE.BufferAttribute(new Float32Array(pos.length / 3).fill(1), 1));
+    const mesh = new THREE.Mesh(g, material); mesh.castShadow = true; mesh.receiveShadow = true; this.root.add(mesh); this.sculpts.push(mesh); return mesh;
   }
   get skin() { if (!this._skin) { const G = this.base.meta.groups; this._skin = new Skin(this.src, this.base.tri, G[0][0], G[1][0] + G[1][1]); } return this._skin; }
   // The lash line of the upper lid: a dark rounded line along the rim, thicker towards the outer corner, with a short wing.
