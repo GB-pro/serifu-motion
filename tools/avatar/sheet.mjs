@@ -3,7 +3,7 @@
 // A cell can override the query: name=...|cam=30,0,62  (then the page is loaded again for that cell).
 import { chromium } from 'playwright';
 const [out, query, cell = '360', cols = '4', ...cells] = process.argv.slice(2);
-const port = process.env.PORT || 8765, C = +cell;
+const port = process.env.PORT || 8765, C = +cell, page = process.env.PAGE || 'head_dev.html'; // PAGE=figure_dev.html for a whole character
 const b = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const p = await b.newPage({ viewport: { width: C, height: C } });
 p.on('pageerror', (e) => console.log('ERR', e.message)); p.on('console', (m) => { if (m.type() === 'error') console.log('console:', m.text()); });
@@ -12,7 +12,7 @@ let loaded = null; const shots = [];
 for (const c of cells) {
   const [head, extra] = c.split('|'), eq = head.indexOf('='), name = eq < 0 ? head : head.slice(0, eq), rest = eq < 0 ? '' : head.slice(eq + 1);
   const [ws, look] = rest.split('@'), qp = new URLSearchParams(query); for (const [k, v] of new URLSearchParams(extra || '')) qp.set(k, v); const q = qp.toString();
-  if (loaded !== q) { await p.goto(`http://127.0.0.1:${port}/head_dev.html?${q}`); await p.waitForFunction('window.READY', null, { timeout: 60000 }); loaded = q; }
+  if (loaded !== q) { await p.goto(`http://127.0.0.1:${port}/${page}?${q}`); await p.waitForFunction('window.READY', null, { timeout: 60000 }); loaded = q; }
   await p.evaluate(([w, l]) => window.setW(w, l), [kv(ws), look ? look.split(',').map(Number) : [0, 0]]);
   shots.push({ name, data: (await p.screenshot({ type: 'jpeg', quality: 92 })).toString('base64') });
 }
