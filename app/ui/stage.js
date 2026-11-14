@@ -2,17 +2,10 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from '../vendor/addons/RoomEnvironment.js';
 import { createCharacter } from '../avatar/characters.js';
-import { loadCast, createFigure, DESIGNS as CAST } from '../avatar/cast.js';
-
-// The characters of the new cast stand on a sculpted head whose base is loaded once; one that is not ready (or not yet
-// remade) is shown as its first figure.
-let castReady = false;
-try { await loadCast(); castReady = true; } catch (e) { console.warn('new cast not loaded, the first figures are used', e); }
 
 export class Stage {
   constructor(container, opts = {}) {
     this.el = container;
-    this.opts = opts;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true, preserveDrawingBuffer: !!opts.preserve, alpha: false });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
@@ -48,12 +41,7 @@ export class Stage {
     const sig = keys.join(',');
     if (sig === this._sig) return; this._sig = sig;
     for (const c of this.chars) this.scene.remove(c.root);
-    const pool = this._pool || (this._pool = {}), used = {}; // a figure takes a moment to build: each is kept for the next time
-    this.chars = keys.map((k) => {
-      const id = k + '#' + (used[k] = (used[k] || 0) + 1); if (pool[id]) return pool[id];
-      let c; if (castReady && CAST[k] && !this.opts.firstFigures) { c = createFigure(k); if (this.opts.bake !== false) c.bake(this.renderer); } else c = createCharacter(k);
-      return (pool[id] = c);
-    });
+    this.chars = keys.map((k) => createCharacter(k));
     const n = this.chars.length, gap = 2.5;
     this.chars.forEach((c, i) => {
       c.root.position.x = (i - (n - 1) / 2) * gap;
