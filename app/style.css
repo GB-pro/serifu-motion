@@ -28,6 +28,7 @@ button, select, input { font: inherit; color: inherit; }
 .brand b { font-size: 16px; letter-spacing: 0.2px; }
 .brand small { display: block; color: var(--dim); font-size: 11px; margin-top: -2px; }
 .tabs { display: flex; gap: 4px; background: var(--surface2); padding: 3px; border-radius: 10px; margin-left: auto; }
+.tabs button, .bar #aiBtn { white-space: nowrap; }
 .tabs button { border: 0; background: transparent; padding: 6px 14px; border-radius: 8px; cursor: pointer; color: var(--dim); }
 .tabs button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; }
 #lang { background: var(--surface2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
@@ -105,6 +106,10 @@ dialog h3 { margin: 0 0 4px; }
 @media (max-width: 760px) {
   .bar { gap: 8px; padding: 8px 12px; }
   .brand small { display: none; }
+  .brand b { font-size: 14px; white-space: nowrap; }
+  .tabs button { padding: 6px 9px; }
+  .bar #aiBtn { padding: 6px 8px; }
+  .bar #lang { max-width: 86px; }
   .top { flex-direction: column; flex: 1 1 60%; }
   .stagewrap { min-height: 42vh; }
   .panel { width: auto; max-width: none; border-left: 0; border-top: 1px solid var(--line); max-height: 30vh; }

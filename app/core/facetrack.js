@@ -47,7 +47,8 @@ export async function trackVideoFace(file, T, base = '', onProgress = null) {
     // second pass: where the tracker could not keep up with the playback, go to every second picture that is still
     // missing and look at it (a blink lasts 4 to 6 pictures, so every second one is enough to catch it)
     const todo = []; for (let t = 0; t < N; t += 2) if (!got[t] && !got[t + 1]) todo.push(t);
-    for (let k = 0; k < todo.length; k++) {
+    const until = performance.now() + Math.max(45, 1.5 * dur) * 1000; // a slow device stops here and uses what it has seen
+    for (let k = 0; k < todo.length && performance.now() < until; k++) {
       const t = todo[k];
       await new Promise((ok) => { const tm = setTimeout(ok, 2000); v.onseeked = () => { clearTimeout(tm); ok(); }; v.currentTime = Math.min(dur - 0.01, t / FPS + 0.001); });
       look(t / FPS); onProgress && onProgress(0.5 + 0.5 * (k + 1) / todo.length);
