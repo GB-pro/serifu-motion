@@ -12,16 +12,16 @@ function form(o = {}) { // the smooth form of the head, in centimetres on the pu
   f.ell([0, -1.6 - (o.drop ?? 0), 2.2], [8.0 * w * (o.jaw ?? 1), 5.2 * (o.long ?? 1), 8.3], { k: o.blend ?? 3.5 }); // cheeks, jaw and chin as one round box: the face is flat in front from the brow to the mouth
   return f;
 }
-const SHAPE = { smooth: 20, noseSmooth: 60, nostril: 150, noseFilm: 400, neckSmooth: 60, reliefSmooth: 300, relax: 30, calm: 6, relief: 0.6,
+const SHAPE = { smooth: 20, noseSmooth: 60, nostril: 150, noseFilm: 400, neckSmooth: 60, neckCalm: 80, reliefSmooth: 300, even: 100, relax: 30, calm: 30, relief: 0.6,
   eye: 1.7, eyeTall: 1.3, eyeApart: 0.2, eyeDown: 0.4, feature: 1, featureUp: 0.5,
-  mouth: 1.25, mouthCurve: 0.5, mouthFlat: 0.6, mouthRelief: 0.55, noseForm: { r: [1.6, 1.2, 1.5], out: 1.45, k: 0.7, bridge: { r: [0.8, 0.7], k: 1.2 } }, neck: 0.5, neckTop: -5.5, neckFade: 3, ear: 0.9 };
+  mouth: 1.25, mouthCurve: 0.5, mouthFlat: 0, mouthRelief: 0.8, noseForm: { r: [1.6, 1.2, 1.5], out: 1.45, k: 0.7, bridge: { r: [0.8, 0.7], k: 1.2 } }, neck: 0.5, neckTop: -5.5, neckFade: 3, ear: 0.9 };
 const POSE = { mouthSmile_L: 0.25, mouthSmile_R: 0.25 };
 const matte = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.45, ...o });
 
 export const DESIGNS = {
   hana: {
     name: 'Hana', label: { ja: 'ハナ', en: 'Hana' },
-    head: { shape: { ...SHAPE, form: form() }, pose: POSE, skin: '#f0b995', blush: '#e8685f', blushAmount: 0.5, lip: '#d0706a', iris: '#3f8a58', irisSize: 0.7, hair: '#5a2f1a', lash: { thick: 0.085, wing: 0.42 }, brow: { in: [1.9, 4.72], top: [3.5, 5.1], out: [4.75, 4.65], thick: [0.55, 0.5, 0.16] } },
+    head: { shape: { ...SHAPE, form: form() }, pose: POSE, skin: '#f0b995', blush: '#f07f6e', blushAmount: 0.32, lip: '#d0706a', iris: '#3f8a58', irisSize: 0.7, hair: '#5a2f1a', lash: { thick: 0.085, wing: 0.42 }, brow: { in: [1.9, 4.72], top: [3.5, 5.1], out: [4.75, 4.65], thick: [0.55, 0.5, 0.16] } },
     body: { shoulder: 7.6, depth: 4.4, color: '#f2c14e' },
     hair: (head) => {
       const f = new Field(), m = hairMaterial('#6b3a1f');

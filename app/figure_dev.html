@@ -31,7 +31,7 @@ if (q.get('nohair')) design.hair = null;
 if (q.get('nowear')) design.wear = null;
 const t0 = performance.now();
 const fig = new Figure(design); window.fig = fig; scene.add(fig.root);
-const tBuild = performance.now() - t0;
+const tBuild = performance.now() - t0; window.buildMs = tBuild;
 if (q.get('showform')) { // the smooth form of the head next to the character
   const { polygonise } = await import('./avatar/sculpt.js'), m = polygonise(design.head.shape.form, 0.4, [[-12, -12, -12], [12, 17, 14]]), g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(m.pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(m.nrm, 3)); g.setIndex(new THREE.BufferAttribute(m.idx, 1));
