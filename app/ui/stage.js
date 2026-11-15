@@ -6,6 +6,7 @@ import { createCharacter } from '../avatar/characters.js';
 export class Stage {
   constructor(container, opts = {}) {
     this.el = container;
+    this._THREE = THREE;
     this.renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true, preserveDrawingBuffer: !!opts.preserve, alpha: false });
     this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
@@ -24,11 +25,17 @@ export class Stage {
     const rim = new THREE.DirectionalLight('#cfe4ff', 1.1); rim.position.set(-4, 3, -4); scene.add(rim);
     const fill = new THREE.DirectionalLight('#ffe9f0', 0.4); fill.position.set(-3, 1, 3); scene.add(fill);
     const floor = new THREE.Mesh(new THREE.CircleGeometry(12, 64), new THREE.ShadowMaterial({ opacity: 0.18 }));
-    floor.rotation.x = -Math.PI / 2; floor.position.y = -1.4; floor.receiveShadow = true; scene.add(floor);
+    floor.rotation.x = -Math.PI / 2; floor.position.y = -1.4; floor.receiveShadow = true; scene.add(floor); this.floor = floor;
     this.camera = new THREE.PerspectiveCamera(28, 1, 0.1, 100);
     this.chars = [];
     this._resize();
     new ResizeObserver(() => this._resize()).observe(container);
+  }
+  // a flat colour for keying in a broadcast program (no floor shadow, which would darken the key colour); null = the usual backdrop
+  setBackdrop(color) {
+    if (!this._bg0) this._bg0 = this.scene.background;
+    this.scene.background = color ? new this._THREE.Color(color) : this._bg0;
+    this.floor.visible = !color;
   }
   _bgTexture() {
     const c = document.createElement('canvas'); c.width = 16; c.height = 256;

@@ -11,7 +11,8 @@ const CAM_MOUTH = ['AU26', 'AU22', 'AU18', 'AU20', 'AU16', 'AU10', 'AU24', 'AU28
 export class LiveSession {
   // delay (seconds, 0 = none) with meaning = { transcribe, understand }: the character plays that much later than the
   // voice, and what is said in the meantime is understood so that the feeling of the words is on the face in time
-  constructor({ rtModel, rtExtra = [], onFrame, onStatus, video, base = './', profile = null, style = 'anime', delay = 0, meaning = null, onHeard = null }) {
+  constructor({ rtModel, rtExtra = [], onFrame, onStatus, video, base = './', profile = null, style = 'anime', delay = 0, meaning = null, onHeard = null, camId = '', micId = '', gateDb = -99 }) {
+    this.camId = camId; this.micId = micId; this.gateDb = gateDb; this.gain = 1; this.gateHold = 0; this.level = -99;
     this.delay = meaning ? delay : 0; this.hold = []; this.heldN = 0; this.played = 0; this.marks = []; this.mark = null;
     if (this.delay > 0) this.listener = new LineListener({ ...meaning, maxAge: this.delay, onText: (text) => onHeard && onHeard({ text }), onMark: (m) => { this.marks.push(m); if (this.marks.length > 40) this.marks.shift(); onHeard && onHeard(m); } });
     this.rtModel = rtModel; this.rtExtra = rtExtra; this.onFrame = onFrame; this.onStatus = onStatus || (() => {});
@@ -23,8 +24,8 @@ export class LiveSession {
   async start() {
     this.emo = new LiveEmo(this.rtModel, { seed: Date.now() & 0xffff, profile: this.profile, style: this.style, extra: this.rtExtra });
     this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, ...(this.micId ? { deviceId: { exact: this.micId } } : {}) },
+      video: { ...(this.camId ? { deviceId: { exact: this.camId } } : { facingMode: 'user' }), width: { ideal: 640 }, height: { ideal: 480 } },
     });
     this.video.srcObject = this.stream; this.video.muted = true; this.video.playsInline = true; await this.video.play().catch(() => {});
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -66,6 +67,7 @@ export class LiveSession {
       if (this.phase >= this.ratio) { out.push(this.acc / this.accN); this.acc = 0; this.accN = 0; this.phase -= this.ratio; }
     }
     const x = Float32Array.from(out), au = this.faceSeen ? this.camAU : null;
+    this._gate(x);
     if (!(this.delay > 0)) return this._perform(x, au);
     // with a delay: the listener hears it now, the performer gets it (and the face the camera saw with it) later
     this.listener.push(x); this.hold.push({ x, au }); this.heldN += x.length;
@@ -76,6 +78,18 @@ export class LiveSession {
       if (m !== this.mark) { this.mark = m; this.emo.force(m ? m.emo : null, m ? m.intensity : 0); }
       this.played += h.x.length; this._perform(h.x, h.au);
     }
+  }
+  // Several people in one room: each microphone also hears the others, quieter. Sound below the threshold is taken as
+  // somebody else's voice and faded out (quickly open, a short hold, then a gentle close so words are not chopped).
+  _gate(x) {
+    if (!x.length) return;
+    let e = 0; for (let i = 0; i < x.length; i++) e += x[i] * x[i];
+    const db = 10 * Math.log10(e / x.length + 1e-12); this.level = Math.max(db, this.level - 1.5);
+    if (!(this.gateDb > -90)) { this.gain = 1; return; }
+    if (db >= this.gateDb) this.gateHold = 0.35 * 16000; else this.gateHold -= x.length;
+    const target = this.gateHold > 0 ? 1 : 0, g0 = this.gain, g1 = target > g0 ? Math.min(1, g0 + x.length / 160) : Math.max(0, g0 - x.length / 2400);
+    for (let i = 0; i < x.length; i++) x[i] *= g0 + (g1 - g0) * (i / x.length);
+    this.gain = g1;
   }
   _perform(x, au) {
     this.lateAU = au;

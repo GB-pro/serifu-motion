@@ -101,7 +101,7 @@ class App {
   tab(name) {
     document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
     $('#studio').hidden = name !== 'studio'; $('#live').hidden = name !== 'live';
-    if (name === 'live' && !this.liveStage) { this.liveStage = new Stage($('#liveStage')); this.liveStage.setCharacters([$('#liveAvatar').value]); }
+    if (name === 'live' && !this.liveStage) { this.liveStage = new Stage($('#liveStage')); this.liveStage.setCharacters([$('#liveAvatar').value]); if ($('#liveBg').value) this.liveStage.setBackdrop($('#liveBg').value); }
     if (name === 'studio') { this.timeline.draw(); }
     if (name !== 'live' && this.live) this.stopLive();
   }
@@ -542,6 +542,40 @@ class App {
     $('#liveRec').onclick = () => this.toggleRec();
     $('#camMouth').onchange = (e) => this.live && (this.live.useCamMouth = e.target.checked);
     $('#camBlink').onchange = (e) => this.live && (this.live.useCamBlink = e.target.checked);
+    // several people: each window keeps its own camera, microphone, avatar and settings (sessionStorage is per window)
+    const ss = { get: (k) => { try { return sessionStorage.getItem('sm.live.' + k) || ''; } catch { return ''; } }, set: (k, v) => { try { sessionStorage.setItem('sm.live.' + k, v); } catch { /* ignore */ } } };
+    if (ss.get('avatar') && AVATARS.includes(ss.get('avatar'))) sel.value = ss.get('avatar');
+    sel.addEventListener('change', () => ss.set('avatar', sel.value));
+    const restart = () => { if (this.live) { this.stopLive(); this.startLive(); } };
+    for (const [id, k] of [['#liveCam', 'cam'], ['#liveMic', 'mic']]) $(id).onchange = (e) => { ss.set(k, e.target.value); restart(); };
+    this.listDevices = async (ask) => {
+      try {
+        if (ask) { const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: true }); s.getTracks().forEach((tr) => tr.stop()); }
+        const devs = await navigator.mediaDevices.enumerateDevices();
+        for (const [id, kind, k] of [['#liveCam', 'videoinput', 'cam'], ['#liveMic', 'audioinput', 'mic']]) {
+          const box = $(id), want = ss.get(k) || box.value; box.length = 1; box.options[0].textContent = t('defaultDev');
+          const list = devs.filter((d) => d.kind === kind && d.deviceId && d.deviceId !== 'default' && d.deviceId !== 'communications'), seen = {};
+          list.forEach((d, i) => { const name = d.label || `${k} ${i + 1}`, dup = list.filter((o) => o.label === d.label).length > 1; seen[name] = (seen[name] || 0) + 1; box.add(new Option(dup ? `${name} (${seen[name]})` : name, d.deviceId)); });
+          box.value = [...box.options].some((o) => o.value === want) ? want : '';
+        }
+      } catch (e) { console.warn('devices', e); }
+    };
+    $('#devRefresh').onclick = () => this.listDevices(true);
+    navigator.mediaDevices?.addEventListener?.('devicechange', () => this.listDevices(false));
+    this.listDevices(false);
+    const gate = $('#liveGate'), gv = $('#gateV'); if (ss.get('gate')) gate.value = ss.get('gate');
+    const showGate = () => { const v = +gate.value; gv.textContent = v <= -70 ? t('gateOff') : v + ' dB'; $('#gateMark').style.left = ((v + 80) / 70 * 100) + '%'; if (this.live) this.live.gateDb = v <= -70 ? -99 : v; };
+    gate.oninput = () => { ss.set('gate', gate.value); showGate(); }; showGate();
+    const bg = $('#liveBg'); if (ss.get('bg') !== '') bg.value = ss.get('bg');
+    bg.onchange = () => { ss.set('bg', bg.value); this.liveStage && this.liveStage.setBackdrop(bg.value || null); };
+    const hint = $('#obsHint'); let hintT = 0;
+    const obs = (on) => {
+      document.body.classList.toggle('obs', on); hint.classList.remove('gone'); clearTimeout(hintT);
+      if (on) { hintT = setTimeout(() => hint.classList.add('gone'), 2500); if (!bg.value) { bg.value = '#00b140'; bg.onchange(); } }
+    };
+    $('#obsBtn').onclick = () => obs(true);
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.body.classList.contains('obs')) obs(false); });
+    $('#liveStage').addEventListener('dblclick', () => { if (document.body.classList.contains('obs')) obs(false); });
   }
   async startLive() {
     try {
@@ -560,9 +594,10 @@ class App {
         } catch (e) { console.warn(e); heard.textContent = `${t('sttFailed')} (${e.message})`; } finally { this.busy(null); }
       }
       const onHeard = (m) => { heard.textContent = (m.emo ? `${t(m.emo)} ${Math.round(m.intensity * 100)}% · ` : '') + m.text + (heard.dataset.why ? ` · ${heard.dataset.why}` : ''); };
-      this.live = new LiveSession({ rtModel: this.rtModel, rtExtra: this.rtExtra, video: $('#camPreview'), onStatus: () => {}, profile: this.acting[$('#liveAvatar').value], style: $('#liveStyle') ? $('#liveStyle').value : 'anime', delay: +$('#liveDelay').value, meaning, onHeard });
+      this.live = new LiveSession({ rtModel: this.rtModel, rtExtra: this.rtExtra, video: $('#camPreview'), onStatus: () => {}, profile: this.acting[$('#liveAvatar').value], style: $('#liveStyle') ? $('#liveStyle').value : 'anime', delay: +$('#liveDelay').value, meaning, onHeard, camId: $('#liveCam').value, micId: $('#liveMic').value, gateDb: +$('#liveGate').value <= -70 ? -99 : +$('#liveGate').value });
       this.live.useCamMouth = $('#camMouth').checked; this.live.useCamBlink = $('#camBlink').checked;
       await this.live.start();
+      this.listDevices(false); // the names of the devices are known once the browser has been allowed to use them
       $('#liveStart').textContent = t('stopLive'); $('#liveRec').disabled = false;
     } catch (e) { alert(e.message || e); this.live = null; }
   }
@@ -585,6 +620,7 @@ class App {
       if (f) {
         this.liveStage.apply(0, frameToObj(f.y), this._dt || 0);
         const m = $('#emoMeter'); if (!this._meterT || now - this._meterT > 150) { this._meterT = now; m.innerHTML = EMOS.map((e, j) => `<div><span style="width:52px">${t(e)}</span><i style="width:${Math.round(f.emo[j] * 160)}px;background:${EMO_COLORS[e]}"></i></div>`).join(''); }
+        { const lv = this.live.level, b = $('#lvlBar'); b.style.width = Math.max(0, Math.min(100, (lv + 80) / 70 * 100)) + '%'; b.classList.toggle('open', this.live.gain > 0.5 && lv > -75); }
         $('#faceStatus').textContent = this.live.cam ? (this.live.faceSeen ? t('faceFound') : t('noFace')) : '';
       }
     }

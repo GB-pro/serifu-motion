@@ -93,6 +93,7 @@
   <div class="livewrap">
     <div id="liveStage" class="stage"></div>
     <video id="camPreview" playsinline muted></video>
+    <div class="obsHint" id="obsHint" data-i18n="obsExit"></div>
     <div class="liveHud">
       <div id="emoMeter" class="emometer"></div>
       <div id="faceStatus" class="pill"></div>
@@ -101,6 +102,12 @@
   </div>
   <div class="liveCtl">
     <label class="mini"><span data-i18n="avatar"></span> <select id="liveAvatar"></select></label>
+    <label class="mini"><span data-i18n="camera"></span> <select id="liveCam"><option value="" data-i18n="defaultDev"></option></select></label>
+    <label class="mini"><span data-i18n="mic"></span> <select id="liveMic"><option value="" data-i18n="defaultDev"></option></select></label>
+    <button class="ghost" id="devRefresh" data-i18n="devRefresh"></button>
+    <label class="mini" id="gateBox"><span data-i18n="gate"></span> <input type="range" id="liveGate" min="-70" max="-20" step="1" value="-70"> <output id="gateV"></output> <span class="lvl"><i id="lvlBar"></i><b id="gateMark"></b></span></label>
+    <label class="mini"><span data-i18n="backdrop"></span> <select id="liveBg"><option value="" data-i18n="bgNormal"></option><option value="#00b140" data-i18n="bgGreen"></option><option value="#0047bb" data-i18n="bgBlue"></option><option value="#ff00ff" data-i18n="bgMagenta"></option></select></label>
+    <button class="btn" id="obsBtn" data-i18n="obsView"></button>
     <label class="mini"><span data-i18n="style"></span> <select id="liveStyle"></select></label>
     <button class="btn primary" id="liveStart" data-i18n="startLive"></button>
     <button class="btn" id="liveRec" data-i18n="record" disabled></button>
@@ -110,6 +117,7 @@
     <label class="mini"><span data-i18n="liveDelay"></span> <select id="liveDelay"><option value="4">4 s</option><option value="6">6 s</option><option value="8" selected>8 s</option><option value="10">10 s</option></select></label>
     <p class="note" id="liveHeard"></p>
     <p class="note" data-i18n="liveNote"></p>
+    <p class="note" data-i18n="obsNote"></p>
   </div>
 </section>
 </main>
